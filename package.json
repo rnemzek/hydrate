@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "commonjs",
   "bin": {
-    "hydrate": "./bin/cli.js"
+    "hydrate": "bin/cli.js"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
