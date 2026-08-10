@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const { runInit } = require('../src/init');
+const { runInject } = require('../src/inject');
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -10,6 +11,10 @@ const command = args[0];
 switch (command) {
   case 'init':
     runInit();
+    break;
+
+  case 'inject':
+    runInject();
     break;
 
   case 'prompt':
@@ -42,6 +47,8 @@ USAGE:
 
 COMMANDS:
   init                       Scaffold the Hydrate harness in the current repo.
+  inject                     Zero-config retrofit: auto-discover stack/commands and
+                              non-destructively sync CLAUDE.md + .hydrate/session.json.
   prompt                     Sync active UOW payload to .hydrate/CURRENT_UOW.md.
   prompt --architect         Generate chunked context dump for Gemini (Lead Architect).
   iterate "<reason>"         Spawn an iteration pass (UOW-##.i1, i2) for bug fixes / UX polish.

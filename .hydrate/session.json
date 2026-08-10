@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "projectName": "@nemzilla/hydrate",
+  "stack": [
+    "Node.js"
+  ],
+  "packageManager": "npm",
+  "detectedAt": "2026-08-10T20:33:14.575Z",
+  "commands": {
+    "build": null,
+    "test": "npm test",
+    "lint": null,
+    "start": null
+  },
+  "directories": [
+    "src",
+    "bin"
+  ],
+  "uow": {
+    "active": null,
+    "history": []
+  },
+  "featureMemory": []
+}
