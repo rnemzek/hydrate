@@ -4,8 +4,8 @@ const fs = require('fs');
 const path = require('path');
 const { runInit } = require('../src/init');
 
-// Capture the user command (e.g. 'init', 'prompt')
-const command = process.argv[2];
+const args = process.argv.slice(2);
+const command = args[0];
 
 switch (command) {
   case 'init':
@@ -13,49 +13,255 @@ switch (command) {
     break;
 
   case 'prompt':
-    generatePrompt();
+    generatePrompt(args.slice(1));
     break;
 
-  default:
-    console.log(`
-💧 Hydrate AI Harness — NemZilla Studio
+  case 'iterate':
+    handleIterate(args.slice(1));
+    break;
 
-Usage:
-  npx @nemzilla/hydrate init     Scaffold Hydrate files in current repo
-  npx @nemzilla/hydrate prompt   Generate next UOW prompt for AI Agent
-    `);
+  case 'complete':
+    handleComplete(args.slice(1));
+    break;
+
+  case '--help':
+  case '-h':
+  case 'help':
+  default:
+    showHelp();
     break;
 }
 
-function generatePrompt() {
-  const cwd = process.cwd();
-  const planPath = path.join(cwd, 'PROJECT_PLAN.md');
-  const rulesPath = path.join(cwd, 'AI_PROJECT_RULES.md');
+function showHelp() {
+  console.log(`
+💧 @nemzilla/hydrate — AI Harness & Context Engine
+=====================================================
 
-  if (!fs.existsSync(planPath) || !fs.existsSync(rulesPath)) {
-    console.error("❌ Error: Missing PROJECT_PLAN.md or AI_PROJECT_RULES.md. Run `npx @nemzilla/hydrate init` first!");
+USAGE:
+  $ hydrate <command> [options]
+
+COMMANDS:
+  init                       Scaffold the Hydrate harness in the current repo.
+  prompt                     Sync active UOW payload to .hydrate/CURRENT_UOW.md.
+  prompt --architect         Generate chunked context dump for Gemini (Lead Architect).
+  iterate "<reason>"         Spawn an iteration pass (UOW-##.i1, i2) for bug fixes / UX polish.
+  complete                   Mark current UOW complete in ROADMAP.md and log iteration count.
+
+OPTIONS:
+  --chunk-size=<bytes>       Override default chunk size for architect dump (default: 3000).
+  --help, -h                  Display this help menu.
+  `);
+}
+
+function getPaths() {
+  const cwd = process.cwd();
+  return {
+    cwd,
+    roadmapPath: path.join(cwd, 'ROADMAP.md'),
+    legacyPlanPath: path.join(cwd, 'PROJECT_PLAN.md'),
+    rulesPath: path.join(cwd, 'AI_PROJECT_RULES.md'),
+    claudePath: path.join(cwd, 'CLAUDE.md'),
+    devJournalPath: path.join(cwd, 'docs', 'journals', 'dev-journal.md'),
+    hydrateDir: path.join(cwd, '.hydrate'),
+    currentUowPath: path.join(cwd, '.hydrate', 'CURRENT_UOW.md')
+  };
+}
+
+function generatePrompt(options) {
+  const { cwd, roadmapPath, legacyPlanPath, rulesPath, claudePath, devJournalPath, hydrateDir, currentUowPath } = getPaths();
+
+  const planPath = fs.existsSync(roadmapPath) ? roadmapPath : legacyPlanPath;
+
+  if (!fs.existsSync(planPath) || (!fs.existsSync(rulesPath) && !fs.existsSync(claudePath))) {
+    console.error("❌ Error: Missing ROADMAP.md (or PROJECT_PLAN.md) / AI rules. Run `hydrate init` first!");
     process.exit(1);
   }
 
   const planText = fs.readFileSync(planPath, 'utf8');
-  const rulesText = fs.readFileSync(rulesPath, 'utf8');
+  const rulesText = fs.existsSync(rulesPath) ? fs.readFileSync(rulesPath, 'utf8') : fs.readFileSync(claudePath, 'utf8');
+  const devJournalText = fs.existsSync(devJournalPath) ? fs.readFileSync(devJournalPath, 'utf8') : "No dev journal entries yet.";
 
-  // Regex to extract the first unchecked UOW block
-  const pendingUowMatch = planText.match(/## (UOW-\d+:[\s\S]*?)(?=## UOW-|$)/);
-  const nextUOW = pendingUowMatch ? pendingUowMatch[1] : "All UOWs are complete!";
+  // Read active UOW from .hydrate/CURRENT_UOW.md if it exists
+  let activeUowScope = "";
+  if (fs.existsSync(currentUowPath)) {
+    activeUowScope = fs.readFileSync(currentUowPath, 'utf8');
+  }
 
-  const generatedPrompt = `
-You are acting as Lead Developer (Claude Code / "CC").
+  if (!activeUowScope || activeUowScope.includes("All UOWs are complete!")) {
+    // Fall back to scanning ROADMAP.md or PROJECT_PLAN.md for active [ ] block
+    const pendingMatch = planText.match(/## \[[\s]*\] (UOW-[\w\.-]+:[\s\S]*?)(?=## \[|$)/) ||
+                         planText.match(/## (UOW-\d+:[\s\S]*?)(?=## UOW-|$)/);
+    
+    activeUowScope = pendingMatch ? pendingMatch[1].trim() : "All UOWs are complete!";
+  }
 
-### System Rules
+  const isArchitect = options.includes('--architect');
+  
+  let chunkSize = 3000;
+  const chunkSizeArg = options.find(arg => arg.startsWith('--chunk-size='));
+  if (chunkSizeArg) {
+    const parsed = parseInt(chunkSizeArg.split('=')[1], 10);
+    if (!isNaN(parsed) && parsed > 0) chunkSize = parsed;
+  }
+
+  if (isArchitect) {
+    const rawPayload = `
+PROJECT: ${path.basename(cwd)}
+DATE: ${new Date().toLocaleDateString()}
+
+### 1. ARCHITECTURAL & EXECUTION CONSTRAINTS
 ${rulesText}
 
-### Active Target Task
-${nextUOW}
+### 2. RECENT DEV JOURNAL DELTAS
+${devJournalText.split('\n').slice(-30).join('\n')}
+
+### 3. ACTIVE SPRINT SCOPE (.hydrate/CURRENT_UOW.md)
+${activeUowScope}
 `;
 
-  console.log("\n=================== GENERATED HYDRATE PROMPT ===================");
-  console.log(generatedPrompt);
-  console.log("================================================================");
-  console.log("⚡ Copy the payload above and hand it to Claude Code!");
+    outputChunkedArchitectPayload(rawPayload, chunkSize);
+    return;
+  }
+
+  // Lead Developer payload written to disk
+  const devPayload = `# HYDRATE LEAD DEVELOPER EXECUTION PAYLOAD
+# Generated by @nemzilla/hydrate at ${new Date().toISOString()}
+
+## Architectural & System Execution Rules
+${rulesText}
+
+## Target Task Scope & Active Sprint
+${activeUowScope}
+
+## Execution Instruction
+Read this payload and stand by. Do not execute destructive file edits until instructed by the Product Owner.
+`;
+
+  if (!fs.existsSync(hydrateDir)) {
+    fs.mkdirSync(hydrateDir, { recursive: true });
+  }
+
+  fs.writeFileSync(currentUowPath, devPayload, 'utf8');
+
+  console.log(`
+💧 Hydrate Context Synced!
+  ✔ Wrote active payload to: .hydrate/CURRENT_UOW.md
+
+⚡ NEXT STEPS:
+   1. Run 'hydrate prompt --architect' to get Gemini's sync payload.
+   2. Launch 'yolo' and type 'hydrate' to lock Claude Code onto this task.
+   3. Found a bug or tweak? Run 'hydrate iterate "Your bug description"'
+  `);
+}
+
+function handleIterate(options) {
+  const { currentUowPath } = getPaths();
+
+  if (!fs.existsSync(currentUowPath)) {
+    console.error("❌ Error: No active .hydrate/CURRENT_UOW.md found. Run `hydrate prompt` first!");
+    process.exit(1);
+  }
+
+  const reason = options.join(' ').replace(/^["']|["']$/g, '') || "Bug fix / design polish pass";
+  let content = fs.readFileSync(currentUowPath, 'utf8');
+
+  // Parse base UOW ID
+  const uowMatch = content.match(/UOW-[\d\w]+/);
+  const baseUow = uowMatch ? uowMatch[0] : 'UOW-XX';
+
+  // Count existing iteration passes
+  const iterMatches = [...content.matchAll(/\[Iteration Pass\] UOW-[\d\w]+\.i(\d+)/g)];
+  const nextIterNum = iterMatches.length > 0 ? Math.max(...iterMatches.map(m => parseInt(m[1], 10))) + 1 : 1;
+  const iterationTag = `${baseUow}.i${nextIterNum}`;
+
+  const iterationBlock = `
+
+---
+
+## [Iteration Pass] ${iterationTag} — ${reason}
+> Added during testing (${new Date().toLocaleDateString()}): ${reason}
+
+- [ ] **Task ${iterationTag}.1:** Fix/Implement ${reason}
+- [ ] **Task ${iterationTag}.2:** Verify build via \`npm run build\` and run \`npm test\`
+`;
+
+  fs.appendFileSync(currentUowPath, iterationBlock, 'utf8');
+
+  console.log(`
+🔁 Iteration Pass Spawned!
+  ✔ Appended [Iteration Pass] ${iterationTag} to .hydrate/CURRENT_UOW.md
+  📝 Reason: ${reason}
+`);
+}
+
+function handleComplete() {
+  const { roadmapPath, legacyPlanPath, currentUowPath } = getPaths();
+  const targetPlan = fs.existsSync(roadmapPath) ? roadmapPath : legacyPlanPath;
+
+  if (!fs.existsSync(currentUowPath)) {
+    console.error("❌ Error: No active .hydrate/CURRENT_UOW.md found!");
+    process.exit(1);
+  }
+
+  const uowContent = fs.readFileSync(currentUowPath, 'utf8');
+  const uowMatch = uowContent.match(/UOW-[\d\w]+/);
+  if (!uowMatch) {
+    console.error("❌ Error: Could not determine active UOW ID from .hydrate/CURRENT_UOW.md");
+    process.exit(1);
+  }
+
+  const baseUow = uowMatch[0];
+  const iterCount = ([...uowContent.matchAll(/\[Iteration Pass\]/g)] || []).length;
+
+  if (fs.existsSync(targetPlan)) {
+    let planText = fs.readFileSync(targetPlan, 'utf8');
+    
+    // Replace active/pending marker with checked off + iteration count
+    const activeRegex = new RegExp(`## \\[[\\s]*\\] (${baseUow}:?[^\\n]*)`);
+    if (activeRegex.test(planText)) {
+      planText = planText.replace(activeRegex, `## [x] $1 (Iterated: ${iterCount})`);
+      fs.writeFileSync(targetPlan, planText, 'utf8');
+      console.log(`  ✔ Marked ${baseUow} as [x] in ${path.basename(targetPlan)} (Iterated: ${iterCount})`);
+    }
+  }
+
+  // Clear CURRENT_UOW.md for next task
+  fs.writeFileSync(currentUowPath, `# All UOWs are complete!\nRun 'hydrate prompt' when ready for next task.`, 'utf8');
+
+  console.log(`
+🎉 ${baseUow} Officially Complete!
+  ✔ Sprint scope reset in .hydrate/CURRENT_UOW.md
+  ✔ Total iteration passes logged: ${iterCount}
+`);
+}
+
+function outputChunkedArchitectPayload(payload, chunkSize) {
+  if (payload.length <= chunkSize) {
+    console.log(`
+=================== 💧 HYDRATE ARCHITECT SYNC DUMP ===================
+${payload}
+======================================================================
+⚡ Copy the block above and paste it into Gemini (Lead Architect)!
+`);
+    return;
+  }
+
+  const chunks = [];
+  let currentPos = 0;
+  while (currentPos < payload.length) {
+    chunks.push(payload.slice(currentPos, currentPos + chunkSize));
+    currentPos += chunkSize;
+  }
+
+  console.log(`\n⚠️  Payload exceeds limit (${payload.length} chars, limit ${chunkSize}). Split into ${chunks.length} chunks:\n`);
+
+  chunks.forEach((chunk, index) => {
+    const isLast = index === chunks.length - 1;
+    console.log(`
+=================== 💧 HYDRATE ARCHITECT DUMP [CHUNK ${index + 1} OF ${chunks.length}] ===================
+${chunk}
+========================================================================================
+${isLast ? '⚡ ALL CHUNKS PRINTED. Copy and paste chunks into Gemini, then type "Andiamo" when done!' : '👇 NEXT CHUNK BELOW 👇'}
+`);
+  });
 }
