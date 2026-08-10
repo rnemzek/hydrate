@@ -4,9 +4,26 @@ const fs = require('fs');
 const path = require('path');
 const { runInit } = require('../src/init');
 const { runInject } = require('../src/inject');
+const { HELP_FLAGS, VERSION_FLAGS, COMMANDS, printVersion, printGlobalHelp, printCommandHelp } = require('../src/help');
 
 const args = process.argv.slice(2);
 const command = args[0];
+const rest = args.slice(1);
+
+if (VERSION_FLAGS.includes(command)) {
+  printVersion();
+  process.exit(0);
+}
+
+if (!command || command === 'help' || HELP_FLAGS.includes(command)) {
+  printGlobalHelp();
+  process.exit(0);
+}
+
+if (COMMANDS[command] && rest.some((arg) => HELP_FLAGS.includes(arg))) {
+  printCommandHelp(command);
+  process.exit(0);
+}
 
 switch (command) {
   case 'init':
@@ -18,46 +35,20 @@ switch (command) {
     break;
 
   case 'prompt':
-    generatePrompt(args.slice(1));
+    generatePrompt(rest);
     break;
 
   case 'iterate':
-    handleIterate(args.slice(1));
+    handleIterate(rest);
     break;
 
   case 'complete':
-    handleComplete(args.slice(1));
+    handleComplete(rest);
     break;
 
-  case '--help':
-  case '-h':
-  case 'help':
   default:
-    showHelp();
+    printGlobalHelp();
     break;
-}
-
-function showHelp() {
-  console.log(`
-💧 @nemzilla/hydrate — AI Harness & Context Engine
-=====================================================
-
-USAGE:
-  $ hydrate <command> [options]
-
-COMMANDS:
-  init                       Scaffold the Hydrate harness in the current repo.
-  inject                     Zero-config retrofit: auto-discover stack/commands and
-                              non-destructively sync CLAUDE.md + .hydrate/session.json.
-  prompt                     Sync active UOW payload to .hydrate/CURRENT_UOW.md.
-  prompt --architect         Generate chunked context dump for Gemini (Lead Architect).
-  iterate "<reason>"         Spawn an iteration pass (UOW-##.i1, i2) for bug fixes / UX polish.
-  complete                   Mark current UOW complete in ROADMAP.md and log iteration count.
-
-OPTIONS:
-  --chunk-size=<bytes>       Override default chunk size for architect dump (default: 3000).
-  --help, -h                  Display this help menu.
-  `);
 }
 
 function getPaths() {
