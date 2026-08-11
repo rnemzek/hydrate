@@ -124,6 +124,18 @@ hydrate prompt --architect
 
 # Override the chunk size used when splitting large architect payloads
 hydrate prompt --architect --chunk-size=4000
+
+# Also copy the generated payload straight to the system clipboard
+hydrate prompt --copy
+```
+
+### `hydrate clip` / `hydrate copy`
+
+Copies the current `.hydrate/CURRENT_UOW.md` contents to the system clipboard — `pbcopy` on macOS, `xclip`/`xsel` on Linux, `clip` on Windows. If none of those are installed, it falls back to printing the context to stdout instead of failing.
+
+```bash
+hydrate clip
+hydrate copy   # alias
 ```
 
 ### 3. `hydrate iterate "<message>"`
@@ -138,8 +150,13 @@ hydrate iterate "Fix off-by-one in the chunker"
 
 Marks the active UOW as done: checks it off in `ROADMAP.md` (with the total iteration count logged alongside it), then resets `.hydrate/CURRENT_UOW.md` so the canvas is ready for the next task.
 
+Before closing anything out, it scans `.hydrate/CURRENT_UOW.md` for unchecked `- [ ]` tasks. If any remain, completion is aborted and the offending tasks are printed — pass `--force` to close it out anyway.
+
 ```bash
 hydrate complete
+
+# Skip the unchecked-task check
+hydrate complete --force
 ```
 
 ## Brownfield Projects: `hydrate inject`
@@ -163,9 +180,10 @@ Re-run it any time to refresh detected commands as your `package.json` evolves.
 |---|---|
 | `hydrate init` | Scaffold the Hydrate harness in the current repo. |
 | `hydrate inject` | Zero-config retrofit for existing repos (see above). |
-| `hydrate prompt [--architect] [--chunk-size=<bytes>]` | Sync active UOW payload to `.hydrate/CURRENT_UOW.md`. |
+| `hydrate prompt [--architect] [--chunk-size=<bytes>] [--copy]` | Sync active UOW payload to `.hydrate/CURRENT_UOW.md`. |
 | `hydrate iterate "<reason>"` | Spawn an iteration pass for bug fixes / polish. |
-| `hydrate complete` | Mark the current UOW complete and reset the canvas. |
+| `hydrate complete [--force]` | Mark the current UOW complete and reset the canvas; aborts if unchecked tasks remain unless `--force` is passed. |
+| `hydrate clip` / `hydrate copy` | Copy the active UOW context to the system clipboard (falls back to stdout if no clipboard tool is found). |
 | `hydrate ?` / `hydrate lost` / `hydrate next` | Diagnose the current repo state and recommend the next command. |
 | `hydrate greenfield` | Print the full playbook for starting a brand-new project. |
 | `hydrate brownfield` | Print the full playbook for retrofitting an existing repo. |

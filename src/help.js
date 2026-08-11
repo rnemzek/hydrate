@@ -24,12 +24,13 @@ const COMMANDS = {
   },
   prompt: {
     summary: 'Sync active UOW payload to .hydrate/CURRENT_UOW.md.',
-    usage: 'hydrate prompt [--architect] [--chunk-size=<bytes>]',
+    usage: 'hydrate prompt [--architect] [--chunk-size=<bytes>] [--copy]',
     options: [
       ['--architect', 'Generate a chunked context dump for Gemini (Lead Architect).'],
-      ['--chunk-size=<bytes>', 'Override the default chunk size for the architect dump (default: 3000).']
+      ['--chunk-size=<bytes>', 'Override the default chunk size for the architect dump (default: 3000).'],
+      ['-c, --copy', 'Also copy the generated payload to the system clipboard.']
     ],
-    examples: ['hydrate prompt', 'hydrate prompt --architect', 'hydrate prompt --architect --chunk-size=4000']
+    examples: ['hydrate prompt', 'hydrate prompt --copy', 'hydrate prompt --architect', 'hydrate prompt --architect --chunk-size=4000']
   },
   iterate: {
     summary: 'Spawn an iteration pass (UOW-##.i1, i2) for bug fixes / UX polish.',
@@ -41,9 +42,17 @@ const COMMANDS = {
   },
   complete: {
     summary: 'Mark current UOW complete in ROADMAP.md and log iteration count.',
-    usage: 'hydrate complete',
+    usage: 'hydrate complete [--force]',
+    options: [
+      ['-f, --force', 'Close the UOW out even if unchecked tasks remain in .hydrate/CURRENT_UOW.md.']
+    ],
+    examples: ['hydrate complete', 'hydrate complete --force']
+  },
+  clip: {
+    summary: 'Copy the active .hydrate/CURRENT_UOW.md context to the system clipboard.',
+    usage: 'hydrate clip   (alias: hydrate copy)',
     options: [],
-    examples: ['hydrate complete']
+    examples: ['hydrate clip', 'hydrate copy']
   },
   greenfield: {
     summary: 'Show the step-by-step playbook for starting a brand-new project with hydrate.',
@@ -70,6 +79,9 @@ const COMMANDS = {
 // global help screen doesn't show the same row three times.
 COMMANDS['?'] = { ...COMMANDS.next, hidden: true };
 COMMANDS.lost = { ...COMMANDS.next, hidden: true };
+
+// 'copy' is an alias of 'clip', same hidden-row pattern as above.
+COMMANDS.copy = { ...COMMANDS.clip, hidden: true };
 
 const GUIDE_ALIASES = ['?', 'lost', 'next'];
 
@@ -148,6 +160,8 @@ function printGlobalHelp() {
   console.log(bold('EXAMPLES'));
   console.log('  $ hydrate init');
   console.log('  $ hydrate prompt --architect');
+  console.log('  $ hydrate prompt --copy');
+  console.log('  $ hydrate clip');
   console.log('  $ hydrate <command> --help');
   console.log('  $ hydrate --version');
   console.log('  $ hydrate ?');

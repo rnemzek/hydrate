@@ -6,7 +6,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const CLI_PATH = path.join(__dirname, '..', 'bin', 'cli.js');
-const { diagnose, STATE_UNINITIALIZED, STATE_UOW_IN_PROGRESS, STATE_UOW_COMPLETED } = require('../src/guide');
+const { diagnose, findOpenTasks, STATE_UNINITIALIZED, STATE_UOW_IN_PROGRESS, STATE_UOW_COMPLETED } = require('../src/guide');
 
 function makeTempDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'hydrate-guide-test-'));
@@ -125,5 +125,82 @@ test('hydrate greenfield and hydrate brownfield exit 0 without touching .hydrate
     assert.match(brownfield.stdout, /BROWNFIELD PLAYBOOK/);
 
     assert.equal(fs.existsSync(path.join(dir, '.hydrate')), false);
+  });
+});
+
+// findOpenTasks() -------------------------------------------------------------
+
+test('findOpenTasks() returns an empty array when every task is checked', () => {
+  const content = '## UOW-99\n- [x] Task 99.1\n- [x] Task 99.2\n';
+  assert.deepEqual(findOpenTasks(content), []);
+});
+
+test('findOpenTasks() returns the raw open-task lines, trimmed', () => {
+  const content = '## UOW-99\n  - [ ] Task 99.1\n- [x] Task 99.2\n- [ ] Task 99.3\n';
+  assert.deepEqual(findOpenTasks(content), ['- [ ] Task 99.1', '- [ ] Task 99.3']);
+});
+
+test('findOpenTasks() ignores checked/unchecked markers embedded in prose', () => {
+  const content = 'Discussing [ ] brackets and [x] markers in a sentence, not a checklist.\n';
+  assert.deepEqual(findOpenTasks(content), []);
+});
+
+// `hydrate complete` strict validation ----------------------------------------
+
+function initAndPromptWithUow(dir, uowBody) {
+  runCli(['init'], dir);
+  fs.writeFileSync(path.join(dir, '.hydrate', 'CURRENT_UOW.md'), uowBody);
+}
+
+test('hydrate complete aborts and leaves state untouched when unchecked tasks remain', () => {
+  withTempDir((dir) => {
+    const uowBody = '## UOW-42: Fixture\n- **Status:** IN_PROGRESS\n\n- [x] Task 42.1\n- [ ] Task 42.2\n';
+    initAndPromptWithUow(dir, uowBody);
+
+    const result = runCli(['complete'], dir);
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Cannot complete UOW-42/);
+    assert.match(result.stderr, /Task 42\.2/);
+    assert.equal(fs.readFileSync(path.join(dir, '.hydrate', 'CURRENT_UOW.md'), 'utf8'), uowBody);
+  });
+});
+
+test('hydrate complete succeeds when every task is checked', () => {
+  withTempDir((dir) => {
+    const uowBody = '## UOW-42: Fixture\n- **Status:** IN_PROGRESS\n\n- [x] Task 42.1\n- [x] Task 42.2\n';
+    initAndPromptWithUow(dir, uowBody);
+
+    const result = runCli(['complete'], dir);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /UOW-42 Officially Complete/);
+    assert.match(fs.readFileSync(path.join(dir, '.hydrate', 'CURRENT_UOW.md'), 'utf8'), /All UOWs are complete!/);
+  });
+});
+
+test('hydrate complete --force closes the UOW out despite unchecked tasks', () => {
+  withTempDir((dir) => {
+    const uowBody = '## UOW-42: Fixture\n- **Status:** IN_PROGRESS\n\n- [ ] Task 42.1\n';
+    initAndPromptWithUow(dir, uowBody);
+
+    const result = runCli(['complete', '--force'], dir);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /UOW-42 Officially Complete/);
+    assert.match(result.stdout, /Forced past 1 unchecked task/);
+    assert.match(fs.readFileSync(path.join(dir, '.hydrate', 'CURRENT_UOW.md'), 'utf8'), /All UOWs are complete!/);
+  });
+});
+
+test('hydrate complete -f is the short form of --force', () => {
+  withTempDir((dir) => {
+    const uowBody = '## UOW-42: Fixture\n- **Status:** IN_PROGRESS\n\n- [ ] Task 42.1\n';
+    initAndPromptWithUow(dir, uowBody);
+
+    const result = runCli(['complete', '-f'], dir);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /UOW-42 Officially Complete/);
   });
 });

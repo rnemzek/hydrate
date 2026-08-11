@@ -80,6 +80,16 @@ function diagnose(cwd) {
   };
 }
 
+// Reuses the same "- [ ]" checklist convention `diagnose()` already scans
+// for, but returns the actual lines so `hydrate complete` can print exactly
+// which tasks are still open instead of just a yes/no.
+function findOpenTasks(content) {
+  return content
+    .split('\n')
+    .filter((line) => /^\s*-\s\[\s\]/.test(line))
+    .map((line) => line.trim());
+}
+
 function renderDiagnosis(diagnosis) {
   const lines = [];
   lines.push('');
@@ -149,6 +159,7 @@ module.exports = {
   diagnose,
   renderDiagnosis,
   runGuide,
+  findOpenTasks,
   printGreenfieldPlaybook,
   printBrownfieldPlaybook,
   STATE_UNINITIALIZED,

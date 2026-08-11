@@ -5,7 +5,8 @@ const path = require('path');
 const { runInit } = require('../src/init');
 const { runInject } = require('../src/inject');
 const { HELP_FLAGS, VERSION_FLAGS, COMMANDS, printVersion, printGlobalHelp, printCommandHelp } = require('../src/help');
-const { runGuide, printGreenfieldPlaybook, printBrownfieldPlaybook } = require('../src/guide');
+const { runGuide, printGreenfieldPlaybook, printBrownfieldPlaybook, findOpenTasks } = require('../src/guide');
+const { copyToClipboard } = require('../src/clipboard');
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -45,6 +46,11 @@ switch (command) {
 
   case 'complete':
     handleComplete(rest);
+    break;
+
+  case 'clip':
+  case 'copy':
+    handleClip();
     break;
 
   case '?':
@@ -109,7 +115,8 @@ function generatePrompt(options) {
   }
 
   const isArchitect = options.includes('--architect');
-  
+  const shouldCopy = options.includes('--copy') || options.includes('-c');
+
   let chunkSize = 3000;
   const chunkSizeArg = options.find(arg => arg.startsWith('--chunk-size='));
   if (chunkSizeArg) {
@@ -133,6 +140,8 @@ ${activeUowScope}
 `;
 
     outputChunkedArchitectPayload(rawPayload, chunkSize);
+    // Chunks are already on stdout, so a failed copy doesn't need to reprint them.
+    if (shouldCopy) copyWithFeedback(rawPayload, { printFallback: false });
     return;
   }
 
@@ -165,6 +174,41 @@ Read this payload and stand by. Do not execute destructive file edits until inst
    2. Launch 'yolo' and type 'hydrate' to lock Claude Code onto this task.
    3. Found a bug or tweak? Run 'hydrate iterate "Your bug description"'
   `);
+
+  if (shouldCopy) copyWithFeedback(devPayload);
+}
+
+// Shared by `hydrate prompt --copy` and `hydrate clip`/`copy`: tries the
+// platform clipboard tool and falls back to printing `text` to stdout so
+// the payload is never just silently lost when pbcopy/xclip/xsel/clip
+// aren't installed.
+function copyWithFeedback(text, { printFallback = true } = {}) {
+  const copied = copyToClipboard(text);
+
+  if (copied) {
+    console.log('✔ Copied UOW context to clipboard!');
+  } else if (printFallback) {
+    console.log(`
+⚠ No clipboard tool found (pbcopy/xclip/xsel/clip) — printing context instead:
+
+${text}`);
+  } else {
+    console.log('⚠ No clipboard tool found (pbcopy/xclip/xsel/clip) — context already printed above.');
+  }
+
+  return copied;
+}
+
+function handleClip() {
+  const { currentUowPath } = getPaths();
+
+  if (!fs.existsSync(currentUowPath)) {
+    console.error("❌ Error: No active .hydrate/CURRENT_UOW.md found. Run `hydrate prompt` first!");
+    process.exit(1);
+  }
+
+  const content = fs.readFileSync(currentUowPath, 'utf8');
+  copyWithFeedback(content);
 }
 
 function handleIterate(options) {
@@ -207,9 +251,10 @@ function handleIterate(options) {
 `);
 }
 
-function handleComplete() {
+function handleComplete(options = []) {
   const { roadmapPath, legacyPlanPath, currentUowPath } = getPaths();
   const targetPlan = fs.existsSync(roadmapPath) ? roadmapPath : legacyPlanPath;
+  const force = options.includes('--force') || options.includes('-f');
 
   if (!fs.existsSync(currentUowPath)) {
     console.error("❌ Error: No active .hydrate/CURRENT_UOW.md found!");
@@ -220,6 +265,18 @@ function handleComplete() {
   const uowMatch = uowContent.match(/UOW-[\d\w]+/);
   if (!uowMatch) {
     console.error("❌ Error: Could not determine active UOW ID from .hydrate/CURRENT_UOW.md");
+    process.exit(1);
+  }
+
+  const openTasks = findOpenTasks(uowContent);
+  if (openTasks.length > 0 && !force) {
+    console.error(`
+❌ Cannot complete ${uowMatch[0]}: ${openTasks.length} unchecked task${openTasks.length === 1 ? '' : 's'} remain in .hydrate/CURRENT_UOW.md
+
+${openTasks.map((line) => `  ${line}`).join('\n')}
+
+⚡ Check off every task above, or run 'hydrate complete --force' to close it out anyway.
+`);
     process.exit(1);
   }
 
@@ -244,7 +301,7 @@ function handleComplete() {
   console.log(`
 🎉 ${baseUow} Officially Complete!
   ✔ Sprint scope reset in .hydrate/CURRENT_UOW.md
-  ✔ Total iteration passes logged: ${iterCount}
+  ✔ Total iteration passes logged: ${iterCount}${openTasks.length > 0 ? `\n  ⚠ Forced past ${openTasks.length} unchecked task${openTasks.length === 1 ? '' : 's'} (--force)` : ''}
 `);
 }
 

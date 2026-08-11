@@ -1,33 +1,35 @@
-# HYDRATE ACTIVE EXECUTION CANVAS
+# Unit of Work: UOW-04
 
-## UOW-03: Embedded Guidance Engine, Interactive Playbooks, and State Inspection
-- **ID:** UOW-03
-- **Status:** COMPLETED
-- **Scope:** Give the CLI a self-orienting layer — smart state detection reachable via aliases (`?`, `lost`, `next`), embedded greenfield/brownfield playbooks, and a `--help` screen that surfaces both workflows up front.
+**Title:** Native Clipboard Integration & Strict Completion Validation
+**Status:** IN_PROGRESS
+**Target Version:** `@nemzilla/hydrate@1.1.0`
 
-## Implementation Checklist
+## Scope & Architectural Requirements
+1. **Native System Clipboard Support (`hydrate clip` / `hydrate prompt --copy`)**:
+   - Platform-agnostic execution using Node's `child_process` (`pbcopy` on macOS, `xclip`/`xsel` on Linux, `clip` on Windows).
+   - Add shortcut command `hydrate clip` (and alias `hydrate copy`).
+   - Add `--copy` / `-c` flag support to `hydrate prompt`.
+   - Provide clean ANSI console feedback (`✔ Copied UOW context to clipboard!`) with silent fallback to standard stdout printing if clipboard tools aren't present.
+2. **Strict Completion Validation (`hydrate complete`)**:
+   - Inspect `.hydrate/CURRENT_UOW.md` before allowing status transition to `COMPLETED`.
+   - If unchecked tasks (`[ ]`) remain, abort state closure and display explicit task warnings (overrideable via `hydrate complete --force`).
+3. **Documentation & Tests**:
+   - Update `bin/cli.js`, `src/help.js`, and `README.md` to feature `hydrate clip`.
+   - Add comprehensive unit tests in `test/clipboard.test.js` and extend `test/guide.test.js` using `node:test`.
 
-- [x] **Task 3.1:** Create `src/guide.js` — a Smart State Detector that inspects the cwd for `.hydrate/` (present? has `session.json`? has `CURRENT_UOW.md`? what's its status?) and `ROADMAP.md` (present? any pending `[ ]` UOWs?), then renders a **Current Diagnosis** block plus a **Recommended Next Action** block (e.g. "no `.hydrate/` found → run `hydrate inject` (existing repo) or `hydrate init` (new repo)"; "`.hydrate/CURRENT_UOW.md` says all UOWs complete → run `hydrate prompt`"; "UOW in progress → run `hydrate iterate` or `hydrate complete`").
-- [x] **Task 3.2:** Wire `hydrate ?`, `hydrate lost`, and `hydrate next` in `bin/cli.js` as aliases that all call the same `runGuide()` entry point from `src/guide.js`. No new state is written — this is a read-only diagnostic.
-- [x] **Task 3.3:** Add a `hydrate greenfield` playbook — a static, detailed walkthrough for starting a brand-new project: `init` → `prompt` → `iterate` → `complete`, with the "why" for each step (mirrors the README workflow section but scoped to new repos).
-- [x] **Task 3.4:** Add a `hydrate brownfield` playbook — a static, detailed walkthrough for retrofitting an existing repo: `inject` → review generated `CLAUDE.md` → optionally `init` for UOW tracking → `prompt` → `iterate` → `complete`.
-- [x] **Task 3.5:** Extend the command table in `src/help.js` to register `next` (with `?`/`lost` as hidden aliases resolving to the same metadata), `greenfield`, and `brownfield` so `hydrate <cmd> --help` and the global command list stay consistent with Task 2.7's shared-table pattern — no duplicated usage strings.
-- [x] **Task 3.6:** Update `printGlobalHelp()` in `src/help.js` to add prominent "GREENFIELD PATH (1-2-3)" and "BROWNFIELD PATH (4-5-6)" sections ahead of COMMANDS, pointing at `hydrate greenfield` / `hydrate brownfield` for the full walkthrough, and calling out `hydrate ?` / `lost` / `next` as the "don't know what to do next" escape hatch.
-- [x] **Task 3.7:** Manual verification pass (run in scratch/temp directories, per the UOW-02 incident note — never against this repo's live `.hydrate/`):
-  - `hydrate ?` / `hydrate lost` / `hydrate next` in a directory with no `.hydrate/` at all (both brownfield- and greenfield-looking dirs — confirms inject vs init recommendation)
-  - same aliases with `.hydrate/CURRENT_UOW.md` mid-progress (open tasks → iterate; no open tasks → complete)
-  - same aliases where the current UOW is COMPLETED (status field and legacy sentinel text both handled)
-  - `.hydrate/` present but no `CURRENT_UOW.md` yet
-  - `hydrate greenfield` and `hydrate brownfield` render correctly and take no arguments
-  - `hydrate --help` shows the new GREENFIELD/BROWNFIELD PATH sections
-  - All confirmed against `/tmp` scratch dirs; this repo's own `.hydrate/CURRENT_UOW.md` was untouched (verified via `git status`).
-- [x] **Task 3.8:** Add `node:test` coverage in `test/guide.test.js` — unit tests against `diagnose()` for all four states plus process-level tests for `?`/`lost`/`next`/`greenfield`/`brownfield`, each asserting exit code 0 and no `.hydrate/` mutation in an isolated `fs.mkdtempSync` cwd. 14/14 tests passing across both suites.
-- [x] **Task 3.9:** Update `README.md` with a "Lost? Just ask" subsection documenting `hydrate ?` / `lost` / `next`, and a "Greenfield vs. Brownfield" callout linking to the two playbook commands.
-- [x] **Task 3.10:** Run `npm test` and confirm no regressions against the UOW-02 suite.
+## Tasks
+- [x] Implement `src/clipboard.js` for pure Node `child_process` OS clipboard piping.
+- [x] Wire `hydrate clip`, `hydrate copy`, and `hydrate prompt --copy` into `bin/cli.js` & command table.
+- [x] Implement unchecked task validation in `src/guide.js` (`findOpenTasks`) / `bin/cli.js` (`handleComplete`) for `hydrate complete`.
+- [x] Add `--force` / `-f` flag support to bypass task validation on completion.
+- [x] Update `src/help.js` and `README.md` with new commands and flag options.
+- [x] Write unit tests covering clipboard fallbacks and strict completion checks (`npm test`).
 
 ## Notes
-- `src/guide.js` is read-only — no writes to `.hydrate/` or any repo file. It exports `diagnose(cwd)` as a pure function (unit-testable) plus `runGuide()` as the console-printing entry point.
-- Reused the `src/help.js` shared command table (Task 2.7 precedent): `next` is canonical, `?` and `lost` are registered as `{ ...COMMANDS.next, hidden: true }` so they resolve for `--help` lookups but don't duplicate the global command list.
-- Also exported the ANSI helpers (`bold`/`dim`/`cyan`/`green`/`yellow`) and `printTable` from `src/help.js` so `guide.js` reuses the same color/no-color logic instead of a second implementation.
-- README updated: new "Lost? Just ask" section (with a Greenfield vs. Brownfield playbook callout) placed right after "The Solution" — near the top, ahead of Installation — plus a pointer to `hydrate ?` in Quickstart & Help and three new rows in the Command Reference table.
-- Final verification: `npm test` → 14/14 passing (4 from UOW-02's `test/cli.test.js`, 10 from UOW-03's `test/guide.test.js`). No regressions.
+- `hydrate complete`'s task validation lives in `src/guide.js::findOpenTasks(content)` (a pure, unit-tested function reusing the same `- [ ]` convention `diagnose()` already scans for) — `bin/cli.js::handleComplete()` calls it and aborts with exit code 1, printing each open task line, unless `--force`/`-f` is passed.
+- `src/clipboard.js::copyToClipboard(text, { platform, spawn })` takes injectable `platform`/`spawn` params so `test/clipboard.test.js` can unit-test every OS branch and failure mode (missing tool, non-zero exit, unknown platform) without touching a real clipboard.
+- `bin/cli.js::copyWithFeedback()` is shared by `hydrate clip`/`copy` and `hydrate prompt --copy`; on failure it prints the payload to stdout (`printFallback: false` for the architect path, since chunks are already on stdout from `outputChunkedArchitectPayload`).
+- CLI-level clipboard tests fake the platform binary (`pbcopy`/`xclip`) via a temp-dir `PATH` override rather than touching the real system clipboard, so `npm test` never mutates the developer's actual clipboard.
+- Version bumped to `1.1.0` in `package.json` per the UOW's target version; not yet published to npm.
+- `npm test`: 36/36 passing (14 pre-existing + 22 new: 8 clipboard unit tests, 7 clipboard CLI tests, 3 `findOpenTasks()` unit tests, 4 `hydrate complete` CLI tests).
+- Manual verification run against a `/tmp` scratch dir only (never this repo's own `.hydrate/`), per the UOW-02 incident note reused from UOW-03: `hydrate clip` copied real payload via `pbcopy`/confirmed via `pbpaste`, `hydrate --help` lists `clip`, `hydrate complete` aborted correctly with 4 open tasks listed, `hydrate complete --force` closed it out and logged the forced-past count.
