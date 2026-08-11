@@ -5,6 +5,7 @@ const path = require('path');
 const { runInit } = require('../src/init');
 const { runInject } = require('../src/inject');
 const { HELP_FLAGS, VERSION_FLAGS, COMMANDS, printVersion, printGlobalHelp, printCommandHelp } = require('../src/help');
+const { runGuide, printGreenfieldPlaybook, printBrownfieldPlaybook } = require('../src/guide');
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -44,6 +45,20 @@ switch (command) {
 
   case 'complete':
     handleComplete(rest);
+    break;
+
+  case '?':
+  case 'lost':
+  case 'next':
+    runGuide();
+    break;
+
+  case 'greenfield':
+    printGreenfieldPlaybook();
+    break;
+
+  case 'brownfield':
+    printBrownfieldPlaybook();
     break;
 
   default:

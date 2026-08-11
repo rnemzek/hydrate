@@ -44,8 +44,34 @@ const COMMANDS = {
     usage: 'hydrate complete',
     options: [],
     examples: ['hydrate complete']
+  },
+  greenfield: {
+    summary: 'Show the step-by-step playbook for starting a brand-new project with hydrate.',
+    usage: 'hydrate greenfield',
+    options: [],
+    examples: ['hydrate greenfield']
+  },
+  brownfield: {
+    summary: 'Show the step-by-step playbook for retrofitting hydrate onto an existing repo.',
+    usage: 'hydrate brownfield',
+    options: [],
+    examples: ['hydrate brownfield']
+  },
+  next: {
+    summary: 'Diagnose the current repo state and recommend the next command to run.',
+    usage: 'hydrate next   (aliases: hydrate ?, hydrate lost)',
+    options: [],
+    examples: ['hydrate next', 'hydrate ?', 'hydrate lost']
   }
 };
+
+// '?' and 'lost' are aliases of 'next' — registered so `hydrate ? --help` /
+// `hydrate lost --help` resolve, but hidden from the COMMANDS listing so the
+// global help screen doesn't show the same row three times.
+COMMANDS['?'] = { ...COMMANDS.next, hidden: true };
+COMMANDS.lost = { ...COMMANDS.next, hidden: true };
+
+const GUIDE_ALIASES = ['?', 'lost', 'next'];
 
 let cachedPkg = null;
 function getPkg() {
@@ -90,9 +116,27 @@ function printGlobalHelp() {
   console.log('  $ hydrate <command> [flags]');
   console.log('');
 
+  console.log(bold(yellow('🌱 GREENFIELD PATH (1-2-3)')) + dim('  — starting a brand-new project'));
+  console.log(`  1. ${green('hydrate init')}       Scaffold ROADMAP.md + .hydrate/`);
+  console.log(`  2. ${green('hydrate prompt')}     Load the active UOW into context`);
+  console.log(`  3. ${green('hydrate complete')}   Close out the UOW when done`);
+  console.log(dim('  Full walkthrough: ') + green('hydrate greenfield'));
+  console.log('');
+
+  console.log(bold(cyan('🏗  BROWNFIELD PATH (4-5-6)')) + dim('  — retrofitting an existing repo'));
+  console.log(`  4. ${green('hydrate inject')}     Auto-detect stack, sync CLAUDE.md`);
+  console.log(`  5. ${green('hydrate init')}       (optional) add UOW tracking`);
+  console.log(`  6. ${green('hydrate prompt')}     Load the active UOW into context`);
+  console.log(dim('  Full walkthrough: ') + green('hydrate brownfield'));
+  console.log('');
+
+  console.log(dim('  Not sure which one you need? Run ') + yellow('hydrate ?') + dim(' (aliases: lost, next) for a live diagnosis.'));
+  console.log('');
+
   console.log(bold('COMMANDS'));
-  const commandWidth = Math.max(...Object.keys(COMMANDS).map((name) => name.length));
-  Object.entries(COMMANDS).forEach(([name, meta]) => {
+  const visibleCommands = Object.entries(COMMANDS).filter(([, meta]) => !meta.hidden);
+  const commandWidth = Math.max(...visibleCommands.map(([name]) => name.length));
+  visibleCommands.forEach(([name, meta]) => {
     console.log(`  ${green(name.padEnd(commandWidth))}   ${meta.summary}`);
   });
   console.log('');
@@ -106,6 +150,7 @@ function printGlobalHelp() {
   console.log('  $ hydrate prompt --architect');
   console.log('  $ hydrate <command> --help');
   console.log('  $ hydrate --version');
+  console.log('  $ hydrate ?');
   console.log('');
 }
 
@@ -143,7 +188,15 @@ module.exports = {
   HELP_FLAGS,
   VERSION_FLAGS,
   COMMANDS,
+  GUIDE_ALIASES,
   printVersion,
   printGlobalHelp,
-  printCommandHelp
+  printCommandHelp,
+  ansi,
+  bold,
+  dim,
+  cyan,
+  green,
+  yellow,
+  printTable
 };

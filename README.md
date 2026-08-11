@@ -27,6 +27,39 @@ AI coding assistants degrade over long sessions:
 
 `hydrate` is the CLI that keeps these documents in sync and hands each persona exactly the context it needs — no more, no less.
 
+## Lost? Just ask
+
+Don't dig through this README to figure out what to run next — ask the CLI directly:
+
+```bash
+hydrate ?
+hydrate lost
+hydrate next
+```
+
+All three are aliases for the same **Smart State Detector**. It inspects the current repo (`.hydrate/`, `ROADMAP.md`) and prints a live diagnosis:
+
+```
+🔍 Current Status
+  UOW-03 is in progress with open checklist items.
+
+🎯 Recommended Next Command
+  $ hydrate iterate "<reason>"
+```
+
+It even figures out whether you're starting fresh or retrofitting: no `.hydrate/` yet plus an existing `package.json`/`.git`/`go.mod`/`Cargo.toml` points you at `hydrate inject`; a genuinely empty repo points you at `hydrate init`.
+
+### Greenfield vs. Brownfield playbooks
+
+For the full step-by-step walkthrough — not just "what's next" but "why" — run the playbook for your situation:
+
+```bash
+hydrate greenfield   # starting a brand-new project
+hydrate brownfield   # retrofitting hydrate onto an existing codebase
+```
+
+Both print directly to the terminal, formatted and numbered, so an AI Product Owner (or a human) can move at full speed without ever opening this file. `hydrate --help` also leads with both paths — labeled **GREENFIELD PATH (1-2-3)** and **BROWNFIELD PATH (4-5-6)** — right above the full command list.
+
 ## Installation
 
 ```bash
@@ -51,9 +84,12 @@ npx @nemzilla/hydrate -v
 # Per-command help: usage, options, and examples for one command
 npx @nemzilla/hydrate prompt --help
 npx @nemzilla/hydrate iterate --help
+
+# Not sure what to run at all? Ask the Smart State Detector.
+npx @nemzilla/hydrate ?
 ```
 
-Running `hydrate` with no arguments is equivalent to `--help`.
+Running `hydrate` with no arguments is equivalent to `--help`. See [Lost? Just ask](#lost-just-ask) below for the full guidance engine.
 
 ## Execution Workflow
 
@@ -130,6 +166,9 @@ Re-run it any time to refresh detected commands as your `package.json` evolves.
 | `hydrate prompt [--architect] [--chunk-size=<bytes>]` | Sync active UOW payload to `.hydrate/CURRENT_UOW.md`. |
 | `hydrate iterate "<reason>"` | Spawn an iteration pass for bug fixes / polish. |
 | `hydrate complete` | Mark the current UOW complete and reset the canvas. |
+| `hydrate ?` / `hydrate lost` / `hydrate next` | Diagnose the current repo state and recommend the next command. |
+| `hydrate greenfield` | Print the full playbook for starting a brand-new project. |
+| `hydrate brownfield` | Print the full playbook for retrofitting an existing repo. |
 | `-h`, `--help` | Display help for the CLI or a specific command. |
 | `-v`, `--version` | Print the installed hydrate version. |
 
