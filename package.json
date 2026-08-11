@@ -1,6 +1,6 @@
 {
   "name": "@nemzilla/hydrate",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Deterministic event-sourced context harness for AI-assisted engineering",
   "main": "index.js",
   "type": "commonjs",

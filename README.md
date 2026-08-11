@@ -174,6 +174,49 @@ npx @nemzilla/hydrate inject
 
 Re-run it any time to refresh detected commands as your `package.json` evolves.
 
+## Universal Adoption: `hydrate adopt`
+
+Already juggling AI context files from other tools? `hydrate adopt` scans for the conventions other assistants use — `.cursorrules`, `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, `.claude/*.md`, `.codex/*` — and lets you consolidate them into a single `CONTEXT.md` without touching the originals.
+
+```bash
+hydrate adopt
+```
+
+You'll get an interactive multi-select prompt listing everything discovered:
+
+```
+💧 Legacy AI context files discovered:
+
+  [1] .cursorrules (412b)
+  [2] AGENTS.md (1203b)
+
+Select files to merge — comma-separated numbers, ranges (e.g. 1,3-4), "all", or "none" [all]:
+```
+
+Every run is non-destructive and idempotent:
+
+- Selected sources are **backed up** to `.hydrate/backups/<timestamp>/` before anything is merged.
+- Originals are **never modified or deleted**.
+- Each merged section is marker-guarded, so re-running `adopt` skips files already folded into `CONTEXT.md` instead of duplicating them.
+- The hydrate workflow directives (Triad contract, `ROADMAP.md` / `.hydrate/CURRENT_UOW.md` pointers) are appended once.
+- `ROADMAP.md` and `.hydrate/CURRENT_UOW.md` are guaranteed to exist afterward, same as `hydrate init`.
+
+```bash
+# Skip the prompt and adopt everything discovered
+hydrate adopt --all
+
+# Merge into a different target file
+hydrate adopt --target=docs/CONTEXT.md
+```
+
+## Claude Code Integration: `hydrate setup-cc`
+
+Scaffolds `.claude/commands/hydrate.md` so Claude Code users can type `/hydrate` to run `hydrate prompt --copy` and load the active UOW straight into context.
+
+```bash
+hydrate setup-cc
+```
+
 ## Command Reference
 
 | Command | Description |
@@ -184,6 +227,8 @@ Re-run it any time to refresh detected commands as your `package.json` evolves.
 | `hydrate iterate "<reason>"` | Spawn an iteration pass for bug fixes / polish. |
 | `hydrate complete [--force]` | Mark the current UOW complete and reset the canvas; aborts if unchecked tasks remain unless `--force` is passed. |
 | `hydrate clip` / `hydrate copy` | Copy the active UOW context to the system clipboard (falls back to stdout if no clipboard tool is found). |
+| `hydrate adopt [--all] [--target=<path>]` | Discover legacy AI context files and non-destructively merge them into `CONTEXT.md` (see above). |
+| `hydrate setup-cc` | Scaffold `.claude/commands/hydrate.md` so `/hydrate` runs `hydrate prompt --copy` in Claude Code. |
 | `hydrate ?` / `hydrate lost` / `hydrate next` | Diagnose the current repo state and recommend the next command. |
 | `hydrate greenfield` | Print the full playbook for starting a brand-new project. |
 | `hydrate brownfield` | Print the full playbook for retrofitting an existing repo. |

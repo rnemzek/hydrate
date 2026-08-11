@@ -54,6 +54,21 @@ const COMMANDS = {
     options: [],
     examples: ['hydrate clip', 'hydrate copy']
   },
+  adopt: {
+    summary: 'Brownfield adoption: discover legacy AI context files and non-destructively merge them into CONTEXT.md.',
+    usage: 'hydrate adopt [--all] [--target=<path>]',
+    options: [
+      ['--all', 'Adopt every discovered file without the interactive prompt.'],
+      ['--target=<path>', 'Merge target file, relative to the repo root (default: CONTEXT.md).']
+    ],
+    examples: ['hydrate adopt', 'hydrate adopt --all', 'hydrate adopt --target=docs/CONTEXT.md']
+  },
+  'setup-cc': {
+    summary: 'Scaffold .claude/commands/hydrate.md so /hydrate runs `hydrate prompt --copy` inside Claude Code.',
+    usage: 'hydrate setup-cc',
+    options: [],
+    examples: ['hydrate setup-cc']
+  },
   greenfield: {
     summary: 'Show the step-by-step playbook for starting a brand-new project with hydrate.',
     usage: 'hydrate greenfield',
@@ -162,6 +177,8 @@ function printGlobalHelp() {
   console.log('  $ hydrate prompt --architect');
   console.log('  $ hydrate prompt --copy');
   console.log('  $ hydrate clip');
+  console.log('  $ hydrate adopt');
+  console.log('  $ hydrate setup-cc');
   console.log('  $ hydrate <command> --help');
   console.log('  $ hydrate --version');
   console.log('  $ hydrate ?');

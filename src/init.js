@@ -1,9 +1,13 @@
 const fs = require('fs');
 const path = require('path');
 
-function runInit() {
-  const cwd = process.cwd();
+// Idempotently writes the canonical hydrate scaffold (rules, roadmap, active
+// UOW canvas, dev journal), skipping any file that already exists. Returns
+// only the files it actually created, so callers can report exactly what
+// changed instead of re-deriving it from disk.
+function scaffold(cwd) {
   const projectName = path.basename(cwd);
+  const created = [];
 
   const hydrateDir = path.join(cwd, '.hydrate');
   if (!fs.existsSync(hydrateDir)) {
@@ -36,7 +40,7 @@ function runInit() {
 - Always log completed tasks, modified files, and test results to \`docs/journals/dev-journal.md\`.
 `;
     fs.writeFileSync(rulesPath, rulesContent, 'utf8');
-    console.log('  ✔ Created AI_PROJECT_RULES.md (Triad Contract & Stack Rules)');
+    created.push({ path: rulesPath, label: 'Created AI_PROJECT_RULES.md (Triad Contract & Stack Rules)' });
   }
 
   // 2. High-Level Roadmap
@@ -53,7 +57,7 @@ function runInit() {
 - [ ] **UOW-03:** User Interface & Command Canvas
 `;
     fs.writeFileSync(roadmapPath, roadmapContent, 'utf8');
-    console.log('  ✔ Created ROADMAP.md (High-Level Milestones)');
+    created.push({ path: roadmapPath, label: 'Created ROADMAP.md (High-Level Milestones)' });
   }
 
   // 3. Active Execution Canvas
@@ -69,7 +73,7 @@ function runInit() {
 - [ ] **Task 1.4:** Verify full build pass via \`npm test\`
 `;
     fs.writeFileSync(currentUowPath, currentUowContent, 'utf8');
-    console.log('  ✔ Created .hydrate/CURRENT_UOW.md (Isolated Active Sprint Scope)');
+    created.push({ path: currentUowPath, label: 'Created .hydrate/CURRENT_UOW.md (Isolated Active Sprint Scope)' });
   }
 
   // 4. Dev Journal Log
@@ -82,8 +86,17 @@ function runInit() {
 - **Status:** Scaffolding complete via @nemzilla/hydrate. Ready for UOW-01 execution.
 `;
     fs.writeFileSync(devJournalPath, devJournalContent, 'utf8');
-    console.log('  ✔ Created docs/journals/dev-journal.md (Execution Telemetry Log)');
+    created.push({ path: devJournalPath, label: 'Created docs/journals/dev-journal.md (Execution Telemetry Log)' });
   }
+
+  return created;
+}
+
+function runInit() {
+  const cwd = process.cwd();
+  const created = scaffold(cwd);
+
+  created.forEach(({ label }) => console.log(`  ✔ ${label}`));
 
   console.log(`
 💧 @nemzilla/hydrate Harness Initialized!
@@ -94,5 +107,4 @@ function runInit() {
 `);
 }
 
-module.exports = { runInit };
-
+module.exports = { runInit, scaffold };

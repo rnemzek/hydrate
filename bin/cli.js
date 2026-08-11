@@ -7,6 +7,8 @@ const { runInject } = require('../src/inject');
 const { HELP_FLAGS, VERSION_FLAGS, COMMANDS, printVersion, printGlobalHelp, printCommandHelp } = require('../src/help');
 const { runGuide, printGreenfieldPlaybook, printBrownfieldPlaybook, findOpenTasks } = require('../src/guide');
 const { copyToClipboard } = require('../src/clipboard');
+const { runAdopt } = require('../src/adopt');
+const { runSetupCc } = require('../src/setupCc');
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -51,6 +53,14 @@ switch (command) {
   case 'clip':
   case 'copy':
     handleClip();
+    break;
+
+  case 'adopt':
+    handleAdopt(rest);
+    break;
+
+  case 'setup-cc':
+    runSetupCc();
     break;
 
   case '?':
@@ -209,6 +219,17 @@ function handleClip() {
 
   const content = fs.readFileSync(currentUowPath, 'utf8');
   copyWithFeedback(content);
+}
+
+function handleAdopt(options) {
+  const targetArg = options.find((arg) => arg.startsWith('--target='));
+  const target = targetArg ? targetArg.slice('--target='.length) : undefined;
+  const all = options.includes('--all') || options.includes('-a');
+
+  runAdopt({ target, all }).catch((err) => {
+    console.error(`❌ Error: ${err.message}`);
+    process.exit(1);
+  });
 }
 
 function handleIterate(options) {
