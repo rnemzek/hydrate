@@ -1,7 +1,7 @@
 {
   "name": "@nemzilla/hydrate",
-  "version": "1.2.0",
-  "description": "Deterministic event-sourced context harness for AI-assisted engineering",
+  "version": "1.3.0",
+  "description": "Deterministic event-sourced context harness for AI-assisted engineering.",
   "main": "index.js",
   "type": "commonjs",
   "bin": {
@@ -14,13 +14,21 @@
     "type": "git",
     "url": "git+https://github.com/rnemzek/hydrate.git"
   },
+  "homepage": "https://github.com/rnemzek/hydrate#readme",
+  "bugs": {
+    "url": "https://github.com/rnemzek/hydrate/issues"
+  },
   "keywords": [
     "ai",
     "context-harness",
     "developer-tools",
     "claude",
+    "claude-code",
     "gemini",
-    "llm-context"
+    "llm-context",
+    "cli",
+    "developer-experience",
+    "workflow"
   ],
   "author": "Robert Nemzek <NemZilla Studio>",
   "license": "MIT",

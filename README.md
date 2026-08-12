@@ -1,6 +1,21 @@
 # 💧 @nemzilla/hydrate
 
+[![npm version](https://img.shields.io/npm/v/@nemzilla/hydrate.svg?color=cb3837&style=flat-square)](https://www.npmjs.com/package/@nemzilla/hydrate)
+[![license](https://img.shields.io/npm/l/@nemzilla/hydrate.svg?style=flat-square)](https://github.com/rnemzek/hydrate/blob/main/LICENSE)
+[![node version](https://img.shields.io/node/v/@nemzilla/hydrate.svg?style=flat-square)](https://nodejs.org)
+[![npm downloads](https://img.shields.io/npm/dm/@nemzilla/hydrate.svg?style=flat-square)](https://www.npmjs.com/package/@nemzilla/hydrate)
+
 **Deterministic event-sourced context harness for AI-assisted engineering.**
+
+Eliminate context rot, stack hallucinations, and prompt drift across Claude Code, Gemini, and legacy AI tools.
+
+```bash
+# Zero-install execution
+npx @nemzilla/hydrate init
+
+# Or install globally for terminal access
+npm install -g @nemzilla/hydrate
+```
 
 ## The Problem
 
