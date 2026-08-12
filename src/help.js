@@ -43,6 +43,14 @@ const COMMANDS = {
   complete: {
     summary: 'Mark current UOW complete in ROADMAP.md and log iteration count.',
     usage: 'hydrate complete [--force]',
+    whenToRun: 'All unit tests pass and the active UOW is done — every task in .hydrate/CURRENT_UOW.md is checked off.',
+    whatItDoes: [
+      'Aborts with no changes if unchecked "- [ ]" tasks remain in .hydrate/CURRENT_UOW.md (unless --force is passed).',
+      'Archives the finished canvas to .hydrate/archive/<UOW-id>.md.',
+      'Flips the matching UOW line in ROADMAP.md to [x], logging the total iteration-pass count.',
+      'Resets .hydrate/CURRENT_UOW.md to the "All UOWs are complete" placeholder, ready for the next hydrate prompt.',
+      'Prints a recommended `git commit` command summarizing the completed UOW.'
+    ],
     options: [
       ['-f, --force', 'Close the UOW out even if unchecked tasks remain in .hydrate/CURRENT_UOW.md.']
     ],
@@ -199,6 +207,18 @@ function printCommandHelp(name) {
 
   console.log(bold('USAGE'));
   console.log(`  $ ${meta.usage}`);
+
+  if (meta.whenToRun) {
+    console.log('');
+    console.log(bold('WHEN TO RUN'));
+    console.log(`  ${meta.whenToRun}`);
+  }
+
+  if (meta.whatItDoes && meta.whatItDoes.length) {
+    console.log('');
+    console.log(bold('WHAT IT DOES'));
+    meta.whatItDoes.forEach((step, i) => console.log(`  ${i + 1}. ${step}`));
+  }
 
   if (meta.options.length) {
     console.log('');

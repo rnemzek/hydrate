@@ -12,7 +12,8 @@ const {
   parseSelectionInput,
   promptForSelection,
   adoptFiles,
-  runAdopt
+  runAdopt,
+  ensureGitignoreHygiene
 } = require('../src/adopt');
 
 function makeTempDir(prefix = 'hydrate-adopt-test-') {
@@ -255,6 +256,126 @@ test('adoptFiles() honors a custom target path', () => {
     assert.equal(result.targetPath, path.join(cwd, 'docs', 'CONTEXT.md'));
     assert.ok(fs.existsSync(result.targetPath));
     assert.equal(fs.existsSync(path.join(cwd, 'CONTEXT.md')), false);
+  } finally {
+    fs.rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+// ensureGitignoreHygiene() ----------------------------------------------------
+
+test('ensureGitignoreHygiene() creates .gitignore when missing', () => {
+  const cwd = makeTempDir();
+  try {
+    const result = ensureGitignoreHygiene(cwd);
+
+    assert.equal(result.created, true);
+    assert.deepEqual(result.added.sort(), ['.hydrate/backups/', '.hydrate/session.json'].sort());
+
+    const content = fs.readFileSync(path.join(cwd, '.gitignore'), 'utf8');
+    assert.match(content, /\.hydrate\/backups\//);
+    assert.match(content, /\.hydrate\/session\.json/);
+  } finally {
+    fs.rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test('ensureGitignoreHygiene() appends missing entries without touching existing lines', () => {
+  const cwd = makeTempDir();
+  try {
+    fs.writeFileSync(path.join(cwd, '.gitignore'), 'node_modules/\n.hydrate/backups/\n');
+
+    const result = ensureGitignoreHygiene(cwd);
+
+    assert.equal(result.created, false);
+    assert.deepEqual(result.added, ['.hydrate/session.json']);
+
+    const content = fs.readFileSync(path.join(cwd, '.gitignore'), 'utf8');
+    const lines = content.split('\n').filter(Boolean);
+    assert.deepEqual(lines, ['node_modules/', '.hydrate/backups/', '.hydrate/session.json']);
+  } finally {
+    fs.rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test('ensureGitignoreHygiene() is idempotent: re-running never duplicates entries', () => {
+  const cwd = makeTempDir();
+  try {
+    ensureGitignoreHygiene(cwd);
+    const first = fs.readFileSync(path.join(cwd, '.gitignore'), 'utf8');
+
+    const second = ensureGitignoreHygiene(cwd);
+    const contentAfterSecond = fs.readFileSync(path.join(cwd, '.gitignore'), 'utf8');
+
+    assert.equal(second.added.length, 0);
+    assert.equal(contentAfterSecond, first);
+
+    const occurrences = contentAfterSecond.split('\n').filter((l) => l.trim() === '.hydrate/backups/').length;
+    assert.equal(occurrences, 1);
+  } finally {
+    fs.rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test('ensureGitignoreHygiene() handles a .gitignore with no trailing newline', () => {
+  const cwd = makeTempDir();
+  try {
+    fs.writeFileSync(path.join(cwd, '.gitignore'), 'dist/');
+
+    ensureGitignoreHygiene(cwd);
+
+    const content = fs.readFileSync(path.join(cwd, '.gitignore'), 'utf8');
+    const lines = content.split('\n').filter(Boolean);
+    assert.deepEqual(lines, ['dist/', '.hydrate/backups/', '.hydrate/session.json']);
+  } finally {
+    fs.rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+// Git hygiene check: hydrate adopt must never touch in-flight repo changes ---
+
+test('hydrate adopt leaves uncommitted/untracked changes completely untouched', () => {
+  const cwd = makeTempDir();
+  try {
+    spawnSync('git', ['init'], { cwd, encoding: 'utf8' });
+    fs.writeFileSync(path.join(cwd, 'work-in-progress.js'), 'const wip = true;\n');
+    fs.writeFileSync(path.join(cwd, '.cursorrules'), 'rules');
+
+    const result = runCli(['adopt', '--all'], cwd);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /uncommitted\/untracked change\(s\) detected/);
+    assert.match(result.stdout, /will remain completely untouched/);
+    // The uncommitted file is reported, never modified or removed.
+    assert.equal(
+      fs.readFileSync(path.join(cwd, 'work-in-progress.js'), 'utf8'),
+      'const wip = true;\n'
+    );
+  } finally {
+    fs.rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test('hydrate adopt reports a clean working tree when there are no changes', () => {
+  const cwd = makeTempDir();
+  try {
+    spawnSync('git', ['init'], { cwd, encoding: 'utf8' });
+
+    const result = runCli(['adopt'], cwd, { input: '' });
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /working tree clean/);
+  } finally {
+    fs.rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test('hydrate adopt skips the git hygiene check gracefully outside a git repo', () => {
+  const cwd = makeTempDir();
+  try {
+    const result = runCli(['adopt'], cwd, { input: '' });
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /not a repository \(or git unavailable\)/);
   } finally {
     fs.rmSync(cwd, { recursive: true, force: true });
   }

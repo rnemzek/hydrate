@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
+const { execSync } = require('child_process');
 const { scaffold } = require('./init');
 
 // Single-file heuristics for known legacy AI context/rule conventions.
@@ -195,7 +196,53 @@ function adoptFiles(cwd, candidates, { targetRelPath = 'CONTEXT.md', now = new D
   return { targetPath, merged, skipped, backups, written: true };
 }
 
-function renderAdoptSummary({ candidates, selected, mergeResult, scaffoldResult, targetRelPath }) {
+// Paths every hydrate-adopted repo should ignore: adoption backups and the
+// local session cache are working-tree noise, never something to commit.
+const GITIGNORE_ENTRIES = ['.hydrate/backups/', '.hydrate/session.json'];
+
+// Idempotently ensures GITIGNORE_ENTRIES are present in .gitignore. Creates
+// the file if it doesn't exist; appends only entries missing by exact-line
+// match, so re-running never duplicates a line or disturbs existing content.
+function ensureGitignoreHygiene(cwd) {
+  const gitignorePath = path.join(cwd, '.gitignore');
+  const exists = fs.existsSync(gitignorePath);
+  const existing = exists ? fs.readFileSync(gitignorePath, 'utf8') : '';
+  const existingLines = new Set(existing.split(/\r?\n/).map((line) => line.trim()));
+
+  const missing = GITIGNORE_ENTRIES.filter((entry) => !existingLines.has(entry));
+  if (missing.length === 0) {
+    return { path: gitignorePath, added: [], created: false };
+  }
+
+  const needsNewline = existing.length > 0 && !existing.endsWith('\n');
+  const content = existing + (needsNewline ? '\n' : '') + missing.join('\n') + '\n';
+  fs.writeFileSync(gitignorePath, content, 'utf8');
+
+  return { path: gitignorePath, added: missing, created: !exists };
+}
+
+// Non-blocking `git status --porcelain` read. Returns null (rather than
+// throwing) when the target isn't a git repo or git isn't on PATH, so a
+// missing/broken git install never breaks `hydrate adopt`.
+function getGitStatusPorcelain(cwd) {
+  try {
+    return execSync('git status --porcelain', { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  } catch {
+    return null;
+  }
+}
+
+function renderGitHygieneLine(porcelain) {
+  if (porcelain === null) {
+    return '🧼 Git: not a repository (or git unavailable) — skipped hygiene check.';
+  }
+  const changedCount = porcelain.split('\n').filter(Boolean).length;
+  return changedCount === 0
+    ? '🧼 Git status: working tree clean.'
+    : `🧼 Notice: ${changedCount} uncommitted/untracked change(s) detected. Your in-flight work will remain completely untouched — adopt only ever writes ${'`'}CONTEXT.md${'`'}, ${'`'}.gitignore${'`'}, and ${'`'}.hydrate/${'`'}.`;
+}
+
+function renderAdoptSummary({ candidates, selected, mergeResult, scaffoldResult, gitignoreResult, gitStatus, targetRelPath }) {
   const lines = [''];
 
   if (candidates.length === 0) {
@@ -227,6 +274,13 @@ function renderAdoptSummary({ candidates, selected, mergeResult, scaffoldResult,
     lines.push('  ✔ Canonical setup already in place (ROADMAP.md / .hydrate/CURRENT_UOW.md).');
   }
 
+  if (gitignoreResult.added.length) {
+    lines.push(`  ✔ ${gitignoreResult.created ? 'Created' : 'Updated'} .gitignore (added ${gitignoreResult.added.join(', ')}).`);
+  }
+
+  lines.push('');
+  lines.push(renderGitHygieneLine(gitStatus));
+
   lines.push('');
   lines.push('⚡ NEXT STEPS:');
   lines.push(`   1. Review ${targetRelPath} — originals are untouched, backups live in .hydrate/backups/.`);
@@ -244,6 +298,11 @@ async function runAdopt(options = {}) {
   const input = options.input || process.stdin;
   const output = options.output || process.stdout;
 
+  // Captured before any adopt writes, so the hygiene message reflects only
+  // the developer's pre-existing in-flight work — not files adopt itself
+  // is about to create (CONTEXT.md, .gitignore, .hydrate/*).
+  const gitStatus = getGitStatusPorcelain(cwd);
+
   const targetAbsPath = path.join(cwd, targetRelPath);
   const candidates = discoverLegacyFiles(cwd, { excludePath: targetAbsPath });
 
@@ -257,8 +316,9 @@ async function runAdopt(options = {}) {
     : { targetPath: targetAbsPath, merged: [], skipped: [], backups: [], written: false };
 
   const scaffoldResult = scaffold(cwd);
+  const gitignoreResult = ensureGitignoreHygiene(cwd);
 
-  const summary = { candidates, selected, mergeResult, scaffoldResult };
+  const summary = { candidates, selected, mergeResult, scaffoldResult, gitignoreResult, gitStatus };
   output.write(renderAdoptSummary({ ...summary, targetRelPath }));
 
   return summary;
@@ -270,6 +330,9 @@ module.exports = {
   parseSelectionInput,
   promptForSelection,
   adoptFiles,
+  ensureGitignoreHygiene,
+  getGitStatusPorcelain,
   FILE_CANDIDATES,
-  DIR_CANDIDATES
+  DIR_CANDIDATES,
+  GITIGNORE_ENTRIES
 };

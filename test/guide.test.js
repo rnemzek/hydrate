@@ -179,6 +179,56 @@ test('hydrate complete succeeds when every task is checked', () => {
   });
 });
 
+test('hydrate complete archives the finished canvas to .hydrate/archive/', () => {
+  withTempDir((dir) => {
+    const uowBody = '## UOW-42: Fixture\n- **Status:** IN_PROGRESS\n\n- [x] Task 42.1\n';
+    initAndPromptWithUow(dir, uowBody);
+
+    const result = runCli(['complete'], dir);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /Archived canvas to .hydrate[\\/]archive[\\/]UOW-42\.md/);
+
+    const archived = fs.readFileSync(path.join(dir, '.hydrate', 'archive', 'UOW-42.md'), 'utf8');
+    assert.equal(archived, uowBody);
+  });
+});
+
+test('hydrate complete prints a suggested git commit command including the UOW title', () => {
+  withTempDir((dir) => {
+    const uowBody = '## UOW-42: Fixture\n**Title:** Widget Overhaul\n- **Status:** IN_PROGRESS\n\n- [x] Task 42.1\n';
+    initAndPromptWithUow(dir, uowBody);
+
+    const result = runCli(['complete'], dir);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /git add -A && git commit -m "feat: complete UOW-42 — Widget Overhaul"/);
+  });
+});
+
+test('hydrate complete marks a list-style ROADMAP.md entry (- [ ] **UOW-id**: ...) as [x]', () => {
+  withTempDir((dir) => {
+    runCli(['init'], dir);
+    fs.writeFileSync(
+      path.join(dir, 'ROADMAP.md'),
+      '# Roadmap\n\n- [ ] **UOW-42**: Fixture Sprint\n- [ ] **UOW-43**: Later Sprint\n'
+    );
+    fs.writeFileSync(
+      path.join(dir, '.hydrate', 'CURRENT_UOW.md'),
+      '## UOW-42: Fixture\n- **Status:** IN_PROGRESS\n\n- [x] Task 42.1\n'
+    );
+
+    const result = runCli(['complete'], dir);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /Marked UOW-42 as \[x\] in ROADMAP\.md/);
+
+    const roadmap = fs.readFileSync(path.join(dir, 'ROADMAP.md'), 'utf8');
+    assert.match(roadmap, /- \[x\] \*\*UOW-42\*\*: Fixture Sprint \(Iterated: 0\)/);
+    assert.match(roadmap, /- \[ \] \*\*UOW-43\*\*: Later Sprint/);
+  });
+});
+
 test('hydrate complete --force closes the UOW out despite unchecked tasks', () => {
   withTempDir((dir) => {
     const uowBody = '## UOW-42: Fixture\n- **Status:** IN_PROGRESS\n\n- [ ] Task 42.1\n';

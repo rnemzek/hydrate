@@ -198,6 +198,29 @@ test('hydrate prompt --copy copies the generated payload to the clipboard', { sk
   }
 });
 
+test('hydrate prompt writes a repo fingerprint safety header ahead of the payload', () => {
+  const cwd = makeTempDir('hydrate-prompt-fingerprint-test-');
+  try {
+    fs.writeFileSync(path.join(cwd, 'package.json'), JSON.stringify({ name: '@acme/widgets' }));
+    const initResult = runCli(['init'], cwd);
+    assert.equal(initResult.status, 0);
+
+    const result = runCli(['prompt'], cwd);
+    assert.equal(result.status, 0);
+
+    const payload = fs.readFileSync(path.join(cwd, '.hydrate', 'CURRENT_UOW.md'), 'utf8');
+    const realCwd = fs.realpathSync(cwd);
+    assert.match(payload, /REPO FINGERPRINT/);
+    assert.match(payload, /Project: @acme\/widgets/);
+    assert.match(payload, new RegExp(`Working Directory \\(absolute\\): ${realCwd.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+    assert.match(payload, /verify your current working|confirm your current working/i);
+    // Fingerprint must precede the payload body, not trail it.
+    assert.ok(payload.indexOf('REPO FINGERPRINT') < payload.indexOf('HYDRATE LEAD DEVELOPER EXECUTION PAYLOAD'));
+  } finally {
+    fs.rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
 test('hydrate prompt without --copy does not touch the clipboard tool', { skip: process.platform === 'win32' }, () => {
   const cwd = makeTempDir('hydrate-prompt-nocopy-test-');
   const binDir = makeTempDir('hydrate-fakebin-');

@@ -116,6 +116,8 @@ hydrate init
 
 Assembles the active UOW context — pulling `AI_PROJECT_RULES.md` (or `CLAUDE.md`), the current dev journal tail, and the pending task block from `ROADMAP.md` — and writes it to `.hydrate/CURRENT_UOW.md` as the Lead Developer's execution payload.
 
+Every payload opens with a **repo fingerprint safety header** — the project name and absolute working directory, plus a note instructing the AI to verify its cwd matches before making any edits. This guards against a stale or copy-pasted payload being applied against the wrong repo.
+
 ```bash
 hydrate prompt
 
@@ -148,9 +150,14 @@ hydrate iterate "Fix off-by-one in the chunker"
 
 ### 4. `hydrate complete`
 
-Marks the active UOW as done: checks it off in `ROADMAP.md` (with the total iteration count logged alongside it), then resets `.hydrate/CURRENT_UOW.md` so the canvas is ready for the next task.
+**When to run:** every unit test passes and every task in `.hydrate/CURRENT_UOW.md` is checked off.
 
-Before closing anything out, it scans `.hydrate/CURRENT_UOW.md` for unchecked `- [ ]` tasks. If any remain, completion is aborted and the offending tasks are printed — pass `--force` to close it out anyway.
+**What it does:**
+1. Scans `.hydrate/CURRENT_UOW.md` for unchecked `- [ ]` tasks. If any remain, completion is aborted and the offending tasks are printed — pass `--force` to close it out anyway.
+2. Archives the finished canvas to `.hydrate/archive/<UOW-id>.md`.
+3. Checks the UOW off in `ROADMAP.md` (matching either a `## [ ] UOW-id` heading or a `- [ ] **UOW-id**: ...` list item), logging the total iteration count alongside it.
+4. Resets `.hydrate/CURRENT_UOW.md` so the canvas is ready for the next task.
+5. Prints a suggested `git commit` command summarizing the completed UOW.
 
 ```bash
 hydrate complete
@@ -200,6 +207,8 @@ Every run is non-destructive and idempotent:
 - Each merged section is marker-guarded, so re-running `adopt` skips files already folded into `CONTEXT.md` instead of duplicating them.
 - The hydrate workflow directives (Triad contract, `ROADMAP.md` / `.hydrate/CURRENT_UOW.md` pointers) are appended once.
 - `ROADMAP.md` and `.hydrate/CURRENT_UOW.md` are guaranteed to exist afterward, same as `hydrate init`.
+- `.gitignore` is idempotently patched with `.hydrate/backups/` and `.hydrate/session.json` (created if it doesn't exist yet) so adoption backups and the session cache never show up as working-tree noise.
+- A non-blocking `git status --porcelain` check runs before any files are written, and the summary reassures you that your in-flight (uncommitted/untracked) work is left completely untouched.
 
 ```bash
 # Skip the prompt and adopt everything discovered
@@ -223,11 +232,11 @@ hydrate setup-cc
 |---|---|
 | `hydrate init` | Scaffold the Hydrate harness in the current repo. |
 | `hydrate inject` | Zero-config retrofit for existing repos (see above). |
-| `hydrate prompt [--architect] [--chunk-size=<bytes>] [--copy]` | Sync active UOW payload to `.hydrate/CURRENT_UOW.md`. |
+| `hydrate prompt [--architect] [--chunk-size=<bytes>] [--copy]` | Sync active UOW payload (with a repo fingerprint safety header) to `.hydrate/CURRENT_UOW.md`. |
 | `hydrate iterate "<reason>"` | Spawn an iteration pass for bug fixes / polish. |
-| `hydrate complete [--force]` | Mark the current UOW complete and reset the canvas; aborts if unchecked tasks remain unless `--force` is passed. |
+| `hydrate complete [--force]` | Mark the current UOW complete, archive its canvas, reset `.hydrate/CURRENT_UOW.md`, and print a suggested commit; aborts if unchecked tasks remain unless `--force` is passed. |
 | `hydrate clip` / `hydrate copy` | Copy the active UOW context to the system clipboard (falls back to stdout if no clipboard tool is found). |
-| `hydrate adopt [--all] [--target=<path>]` | Discover legacy AI context files and non-destructively merge them into `CONTEXT.md` (see above). |
+| `hydrate adopt [--all] [--target=<path>]` | Discover legacy AI context files, non-destructively merge them into `CONTEXT.md`, patch `.gitignore`, and report git status (see above). |
 | `hydrate setup-cc` | Scaffold `.claude/commands/hydrate.md` so `/hydrate` runs `hydrate prompt --copy` in Claude Code. |
 | `hydrate ?` / `hydrate lost` / `hydrate next` | Diagnose the current repo state and recommend the next command. |
 | `hydrate greenfield` | Print the full playbook for starting a brand-new project. |
