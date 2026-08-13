@@ -1,4 +1,8 @@
-# 💧 @nemzilla/hydrate
+<p align="center">
+  <img src="https://raw.githubusercontent.com/rnemzek/hydrate/main/assets/hydratez-icon.svg" alt="HydrateZ Logo" width="120" />
+</p>
+
+# 💧 @nemzilla/hydrate (HydrateZ)
 
 [![npm version](https://img.shields.io/npm/v/@nemzilla/hydrate.svg?color=cb3837&style=flat-square)](https://www.npmjs.com/package/@nemzilla/hydrate)
 [![license](https://img.shields.io/npm/l/@nemzilla/hydrate.svg?style=flat-square)](https://github.com/rnemzek/hydrate/blob/main/LICENSE)

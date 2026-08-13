@@ -1,11 +1,12 @@
 {
   "name": "@nemzilla/hydrate",
-  "version": "1.3.0",
-  "description": "Deterministic event-sourced context harness for AI-assisted engineering.",
+  "version": "1.2.2",
+  "description": "Deterministic event-sourced context harness for AI-assisted engineering (HydrateZ).",
   "main": "index.js",
   "type": "commonjs",
   "bin": {
-    "hydrate": "bin/cli.js"
+    "hydrate": "bin/cli.js",
+    "hz": "bin/cli.js"
   },
   "scripts": {
     "test": "node --test test/*.test.js"
@@ -19,6 +20,8 @@
     "url": "https://github.com/rnemzek/hydrate/issues"
   },
   "keywords": [
+    "hydratez",
+    "nemzilla",
     "ai",
     "context-harness",
     "developer-tools",
