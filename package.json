@@ -9,6 +9,7 @@
     "hz": "bin/cli.js"
   },
   "scripts": {
+    "postinstall": "node bin/setup-global.js",
     "test": "node --test test/*.test.js"
   },
   "repository": {
