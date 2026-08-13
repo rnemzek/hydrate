@@ -10,3 +10,5 @@ try {
   // 1. Create main /hydrate command
   const hydrateCmdPath = path.join(claudeCmdDir, 'hydrate.md');
   const hydrateContent = `Read the current unit of work and project context from \`.hydrate/CURRENT_UOW.md\` and \`CONTEXT.md\`.
+}
+
