@@ -1,0 +1,14 @@
+# {{PROJECT_NAME}} System Documentation
+
+## 1. Living Architecture & System Overview
+<!-- System design, boundaries, and components -->
+
+## 2. Tactical Roadmap & Task Index
+- [ ] **UOW-01:** Initial Project Setup & Core Scaffolding
+
+## 3. Backlog & Feature Parking Lot (Brainstorm)
+<!-- Non-MVP ideas and future capabilities -->
+
+## 4. Decision & Execution Log
+<!-- Append-only history of completed UOWs -->
+

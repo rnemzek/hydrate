@@ -206,12 +206,12 @@ test('hydrate complete prints a suggested git commit command including the UOW t
   });
 });
 
-test('hydrate complete marks a list-style ROADMAP.md entry (- [ ] **UOW-id**: ...) as [x]', () => {
+test('hydrate complete marks a list-style docs/SYSTEM.md entry (- [ ] **UOW-id**: ...) as [x] and logs to Section 4', () => {
   withTempDir((dir) => {
     runCli(['init'], dir);
     fs.writeFileSync(
-      path.join(dir, 'ROADMAP.md'),
-      '# Roadmap\n\n- [ ] **UOW-42**: Fixture Sprint\n- [ ] **UOW-43**: Later Sprint\n'
+      path.join(dir, 'docs', 'SYSTEM.md'),
+      '# Test System\n\n## 2. Tactical Roadmap & Task Index\n- [ ] **UOW-42**: Fixture Sprint\n- [ ] **UOW-43**: Later Sprint\n\n## 4. Decision & Execution Log\n'
     );
     fs.writeFileSync(
       path.join(dir, '.hydrate', 'CURRENT_UOW.md'),
@@ -221,11 +221,46 @@ test('hydrate complete marks a list-style ROADMAP.md entry (- [ ] **UOW-id**: ..
     const result = runCli(['complete'], dir);
 
     assert.equal(result.status, 0);
-    assert.match(result.stdout, /Marked UOW-42 as \[x\] in ROADMAP\.md/);
+    assert.match(result.stdout, /Marked UOW-42 as \[x\] in docs[\\/]SYSTEM\.md \(Iterated: 0\)/);
+    assert.match(result.stdout, /Logged completion to docs[\\/]SYSTEM\.md \(Section 4: Decision & Execution Log\)/);
 
-    const roadmap = fs.readFileSync(path.join(dir, 'ROADMAP.md'), 'utf8');
-    assert.match(roadmap, /- \[x\] \*\*UOW-42\*\*: Fixture Sprint \(Iterated: 0\)/);
-    assert.match(roadmap, /- \[ \] \*\*UOW-43\*\*: Later Sprint/);
+    const systemDoc = fs.readFileSync(path.join(dir, 'docs', 'SYSTEM.md'), 'utf8');
+    assert.match(systemDoc, /- \[x\] \*\*UOW-42\*\*: Fixture Sprint \(Iterated: 0\)/);
+    assert.match(systemDoc, /- \[ \] \*\*UOW-43\*\*: Later Sprint/);
+    assert.match(systemDoc, /### UOW-42 — completed \d{4}-\d{2}-\d{2}/);
+    assert.match(systemDoc, /Suggested commit: `feat: complete UOW-42`/);
+  });
+});
+
+test('hydrate complete logs a completion entry to docs/SYSTEM.md even without a matching roadmap bullet', () => {
+  withTempDir((dir) => {
+    const uowBody = '## UOW-42: Fixture\n- **Status:** IN_PROGRESS\n\n- [x] Task 42.1\n';
+    initAndPromptWithUow(dir, uowBody);
+
+    const result = runCli(['complete'], dir);
+
+    assert.equal(result.status, 0);
+    assert.doesNotMatch(result.stdout, /Marked UOW-42 as \[x\]/);
+    assert.match(result.stdout, /Logged completion to docs[\\/]SYSTEM\.md/);
+
+    const systemDoc = fs.readFileSync(path.join(dir, 'docs', 'SYSTEM.md'), 'utf8');
+    assert.match(systemDoc, /### UOW-42 — completed \d{4}-\d{2}-\d{2}/);
+  });
+});
+
+test('hydrate complete succeeds even when docs/SYSTEM.md does not exist', () => {
+  withTempDir((dir) => {
+    fs.mkdirSync(path.join(dir, '.hydrate'));
+    fs.writeFileSync(
+      path.join(dir, '.hydrate', 'CURRENT_UOW.md'),
+      '## UOW-42: Fixture\n- **Status:** IN_PROGRESS\n\n- [x] Task 42.1\n'
+    );
+
+    const result = runCli(['complete'], dir);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /UOW-42 Officially Complete/);
+    assert.doesNotMatch(result.stdout, /Logged completion to/);
   });
 });
 

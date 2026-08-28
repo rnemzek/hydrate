@@ -10,7 +10,7 @@
   },
   "scripts": {
     "postinstall": "node bin/setup-global.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test --experimental-test-coverage test/*.test.js"
   },
   "repository": {
     "type": "git",

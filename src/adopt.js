@@ -188,7 +188,7 @@ function adoptFiles(cwd, candidates, { targetRelPath = 'CONTEXT.md', now = new D
     : existingTarget.replace(/\n*$/, '\n'));
   parts.push(...sections);
   if (needsTriad) {
-    parts.push(`${TRIAD_MARKER}\n## Hydrate Workflow Directives\n\n- Product Owner, Lead Architect, and Lead Developer roles follow \`AI_PROJECT_RULES.md\`.\n- The active Unit of Work always lives in \`.hydrate/CURRENT_UOW.md\`; the milestone list lives in \`ROADMAP.md\`.\n- Run \`hydrate prompt\` to sync the active UOW before starting work, and \`hydrate ?\` any time you're unsure what to run next.\n`);
+    parts.push(`${TRIAD_MARKER}\n## Hydrate Workflow Directives\n\n- Product Owner, Lead Architect, and Lead Developer roles follow \`CLAUDE.md\`.\n- The active Unit of Work always lives in \`.hydrate/CURRENT_UOW.md\`; the milestone list lives in \`docs/SYSTEM.md\` (Section 2).\n- Run \`hydrate prompt\` to sync the active UOW before starting work, and \`hydrate ?\` any time you're unsure what to run next.\n`);
   }
 
   fs.mkdirSync(path.dirname(targetPath), { recursive: true });
@@ -271,7 +271,7 @@ function renderAdoptSummary({ candidates, selected, mergeResult, scaffoldResult,
     lines.push('  ✔ Canonical setup completed:');
     scaffoldResult.forEach(({ label }) => lines.push(`      - ${label}`));
   } else {
-    lines.push('  ✔ Canonical setup already in place (ROADMAP.md / .hydrate/CURRENT_UOW.md).');
+    lines.push('  ✔ Canonical setup already in place (CLAUDE.md / docs/SYSTEM.md / .hydrate/CURRENT_UOW.md).');
   }
 
   if (gitignoreResult.added.length) {

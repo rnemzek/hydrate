@@ -41,14 +41,15 @@ const COMMANDS = {
     examples: ['hydrate iterate "Fix off-by-one in chunker"']
   },
   complete: {
-    summary: 'Mark current UOW complete in ROADMAP.md and log iteration count.',
+    summary: 'Mark current UOW complete in docs/SYSTEM.md and log iteration count.',
     usage: 'hydrate complete [--force]',
     whenToRun: 'All unit tests pass and the active UOW is done — every task in .hydrate/CURRENT_UOW.md is checked off.',
     whatItDoes: [
       'Aborts with no changes if unchecked "- [ ]" tasks remain in .hydrate/CURRENT_UOW.md (unless --force is passed).',
+      'Flips the matching UOW line in docs/SYSTEM.md (Section 2: Tactical Roadmap & Task Index) to [x], logging the total iteration-pass count.',
+      'Appends a completion entry to docs/SYSTEM.md (Section 4: Decision & Execution Log).',
       'Archives the finished canvas to .hydrate/archive/<UOW-id>.md.',
-      'Flips the matching UOW line in ROADMAP.md to [x], logging the total iteration-pass count.',
-      'Resets .hydrate/CURRENT_UOW.md to the "All UOWs are complete" placeholder, ready for the next hydrate prompt.',
+      'Resets .hydrate/CURRENT_UOW.md to the templated "All UOWs are complete" placeholder, ready for the next hydrate prompt.',
       'Prints a recommended `git commit` command summarizing the completed UOW.'
     ],
     options: [

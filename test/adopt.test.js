@@ -383,13 +383,14 @@ test('hydrate adopt skips the git hygiene check gracefully outside a git repo', 
 
 // runAdopt() -- end-to-end orchestration --------------------------------------
 
-test('runAdopt() with no discovered files still guarantees canonical ROADMAP.md/.hydrate/CURRENT_UOW.md', async () => {
+test('runAdopt() with no discovered files still guarantees the canonical CLAUDE.md/docs/SYSTEM.md/.hydrate/CURRENT_UOW.md', async () => {
   const cwd = makeTempDir();
   try {
     const summary = await runAdopt({ cwd, output: nullOutputStream(), input: inputStream('') });
 
     assert.deepEqual(summary.candidates, []);
-    assert.ok(fs.existsSync(path.join(cwd, 'ROADMAP.md')));
+    assert.ok(fs.existsSync(path.join(cwd, 'CLAUDE.md')));
+    assert.ok(fs.existsSync(path.join(cwd, 'docs', 'SYSTEM.md')));
     assert.ok(fs.existsSync(path.join(cwd, '.hydrate', 'CURRENT_UOW.md')));
     assert.equal(fs.existsSync(path.join(cwd, 'CONTEXT.md')), false);
   } finally {
@@ -429,7 +430,7 @@ test('hydrate adopt --all merges discovered legacy files end-to-end', () => {
     const target = fs.readFileSync(path.join(cwd, 'CONTEXT.md'), 'utf8');
     assert.match(target, /CLI cursor rules\./);
     assert.match(target, /CLI agent rules\./);
-    assert.ok(fs.existsSync(path.join(cwd, 'ROADMAP.md')));
+    assert.ok(fs.existsSync(path.join(cwd, 'docs', 'SYSTEM.md')));
   } finally {
     fs.rmSync(cwd, { recursive: true, force: true });
   }

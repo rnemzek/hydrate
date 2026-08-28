@@ -1,10 +1,12 @@
 const fs = require('fs');
 const path = require('path');
+const { loadTemplate, renderTemplate } = require('./templates');
 
-// Idempotently writes the canonical hydrate scaffold (rules, roadmap, active
-// UOW canvas, dev journal), skipping any file that already exists. Returns
-// only the files it actually created, so callers can report exactly what
-// changed instead of re-deriving it from disk.
+// Idempotently writes the canonical 3-artifact hydrate scaffold — CLAUDE.md,
+// .hydrate/CURRENT_UOW.md, and docs/SYSTEM.md — from templates/, skipping
+// any file that already exists. Returns only the files it actually created,
+// so callers can report exactly what changed instead of re-deriving it from
+// disk.
 function scaffold(cwd) {
   const projectName = path.basename(cwd);
   const created = [];
@@ -14,79 +16,30 @@ function scaffold(cwd) {
     fs.mkdirSync(hydrateDir, { recursive: true });
   }
 
-  const journalsDir = path.join(cwd, 'docs', 'journals');
-  if (!fs.existsSync(journalsDir)) {
-    fs.mkdirSync(journalsDir, { recursive: true });
+  const docsDir = path.join(cwd, 'docs');
+  if (!fs.existsSync(docsDir)) {
+    fs.mkdirSync(docsDir, { recursive: true });
   }
 
-  // 1. System Execution Rules & AI Contract
-  const rulesPath = path.join(cwd, 'AI_PROJECT_RULES.md');
-  if (!fs.existsSync(rulesPath)) {
-    const rulesContent = `# AI PROJECT EXECUTION RULES — ${projectName}
-
-## 1. Operating Triad Contract
-- **Product Owner (Human):** Final authority on scope, acceptance, and repo commits.
-- **Lead Architect (Gemini):** System design, stack boundaries, multi-file architectural consistency.
-- **Lead Developer (Claude Code):** Surgical file edits, unit testing, local execution.
-
-## 2. Technical Stack Constraints
-- **Primary Language:** Vanilla JavaScript / ES Modules (or specify project target)
-- **Runtime Environment:** Node.js / Web Browsers
-- **Testing Standard:** Unit tests must pass via \`npm test\` before committing.
-
-## 3. Surgical Execution Boundaries
-- Focus ONLY on the scope defined in \`.hydrate/CURRENT_UOW.md\`.
-- Do NOT rewrite unrelated modules or introduce unrequested frameworks/dependencies.
-- Always log completed tasks, modified files, and test results to \`docs/journals/dev-journal.md\`.
-`;
-    fs.writeFileSync(rulesPath, rulesContent, 'utf8');
-    created.push({ path: rulesPath, label: 'Created AI_PROJECT_RULES.md (Triad Contract & Stack Rules)' });
+  // 1. Operating Rules & AI Execution Protocol
+  const claudePath = path.join(cwd, 'CLAUDE.md');
+  if (!fs.existsSync(claudePath)) {
+    fs.writeFileSync(claudePath, renderTemplate('CLAUDE.md', { PROJECT_NAME: projectName }), 'utf8');
+    created.push({ path: claudePath, label: 'Created CLAUDE.md (Operating Rules & AI Execution Protocol)' });
   }
 
-  // 2. High-Level Roadmap
-  const roadmapPath = path.join(cwd, 'ROADMAP.md');
-  if (!fs.existsSync(roadmapPath)) {
-    const roadmapContent = `# ${projectName} — Product Roadmap
-
-> High-level milestone tracking. Granular active tasks live in .hydrate/CURRENT_UOW.md.
-
-## Core Milestones
-
-- [ ] **UOW-01:** Scaffold Repository & Core Architecture
-- [ ] **UOW-02:** Primary Data Ingestion & Storage Models
-- [ ] **UOW-03:** User Interface & Command Canvas
-`;
-    fs.writeFileSync(roadmapPath, roadmapContent, 'utf8');
-    created.push({ path: roadmapPath, label: 'Created ROADMAP.md (High-Level Milestones)' });
-  }
-
-  // 3. Active Execution Canvas
+  // 2. Active Execution Canvas
   const currentUowPath = path.join(hydrateDir, 'CURRENT_UOW.md');
   if (!fs.existsSync(currentUowPath)) {
-    const currentUowContent = `# HYDRATE ACTIVE EXECUTION CANVAS
-
-## Target Task Scope: UOW-01 — Scaffold Repository & Core Architecture
-
-- [ ] **Task 1.1:** Setup package.json and project folder layout
-- [ ] **Task 1.2:** Implement primary entry point and core exports
-- [ ] **Task 1.3:** Configure unit test runner and write initial test suite
-- [ ] **Task 1.4:** Verify full build pass via \`npm test\`
-`;
-    fs.writeFileSync(currentUowPath, currentUowContent, 'utf8');
-    created.push({ path: currentUowPath, label: 'Created .hydrate/CURRENT_UOW.md (Isolated Active Sprint Scope)' });
+    fs.writeFileSync(currentUowPath, loadTemplate('CURRENT_UOW.md'), 'utf8');
+    created.push({ path: currentUowPath, label: 'Created .hydrate/CURRENT_UOW.md (Active Execution Canvas)' });
   }
 
-  // 4. Dev Journal Log
-  const devJournalPath = path.join(journalsDir, 'dev-journal.md');
-  if (!fs.existsSync(devJournalPath)) {
-    const devJournalContent = `# Developer Journal & Telemetry Log
-
-## [Day Zero] — Harness Initialized
-- **Date:** ${new Date().toLocaleDateString()}
-- **Status:** Scaffolding complete via @nemzilla/hydrate. Ready for UOW-01 execution.
-`;
-    fs.writeFileSync(devJournalPath, devJournalContent, 'utf8');
-    created.push({ path: devJournalPath, label: 'Created docs/journals/dev-journal.md (Execution Telemetry Log)' });
+  // 3. Living System Documentation (Architecture, Roadmap, Backlog, Decision Log)
+  const systemPath = path.join(docsDir, 'SYSTEM.md');
+  if (!fs.existsSync(systemPath)) {
+    fs.writeFileSync(systemPath, renderTemplate('SYSTEM.md', { PROJECT_NAME: projectName }), 'utf8');
+    created.push({ path: systemPath, label: 'Created docs/SYSTEM.md (Architecture, Roadmap & Decision Log)' });
   }
 
   return created;
@@ -101,9 +54,9 @@ function runInit() {
   console.log(`
 💧 @nemzilla/hydrate Harness Initialized!
 =====================================================
-1. Review/edit AI_PROJECT_RULES.md to set your exact stack.
-2. Define your milestone sequence in ROADMAP.md.
-3. Run 'hydrate prompt' to lock Claude Code onto UOW-01.
+1. Review CLAUDE.md and set your exact stack/quality gates.
+2. Define your task index & roadmap in docs/SYSTEM.md (Section 2).
+3. Run 'hydrate prompt' to lock Claude Code onto the active UOW.
 `);
 }
 

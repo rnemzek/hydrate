@@ -20,12 +20,12 @@ function diagnose(cwd) {
   const hydrateDir = path.join(cwd, '.hydrate');
   const sessionPath = path.join(hydrateDir, 'session.json');
   const currentUowPath = path.join(hydrateDir, 'CURRENT_UOW.md');
-  const roadmapPath = path.join(cwd, 'ROADMAP.md');
+  const systemPath = path.join(cwd, 'docs', 'SYSTEM.md');
 
   const hasHydrateDir = fs.existsSync(hydrateDir);
   const hasSession = fs.existsSync(sessionPath);
   const hasCurrentUow = fs.existsSync(currentUowPath);
-  const hasRoadmap = fs.existsSync(roadmapPath);
+  const hasSystemDoc = fs.existsSync(systemPath);
 
   if (!hasHydrateDir) {
     const brownfield = looksLikeExistingProject(cwd);
@@ -44,9 +44,9 @@ function diagnose(cwd) {
       state: STATE_HYDRATE_DIR_ONLY,
       status: `.hydrate/ exists${hasSession ? ' (session.json found)' : ''} but no CURRENT_UOW.md yet.`,
       recommendation: 'hydrate prompt',
-      reason: hasRoadmap
-        ? 'ROADMAP.md is present — prompt will pull the next pending UOW into scope.'
-        : 'Run `hydrate init` first if you also want ROADMAP.md milestone tracking.'
+      reason: hasSystemDoc
+        ? 'docs/SYSTEM.md is present — prompt will pull the next pending UOW into scope.'
+        : 'Run `hydrate init` first if you also want docs/SYSTEM.md milestone tracking.'
     };
   }
 
@@ -60,9 +60,9 @@ function diagnose(cwd) {
       state: STATE_UOW_COMPLETED,
       status: 'The active UOW is marked COMPLETED — the canvas is reset and ready for the next task.',
       recommendation: 'hydrate prompt',
-      reason: hasRoadmap
-        ? 'Pulls the next pending `[ ]` UOW out of ROADMAP.md.'
-        : 'Add a new milestone to ROADMAP.md, then run prompt again.'
+      reason: hasSystemDoc
+        ? 'Pulls the next pending `[ ]` UOW out of docs/SYSTEM.md (Section 2).'
+        : 'Add a new milestone to docs/SYSTEM.md, then run prompt again.'
     };
   }
 
@@ -127,8 +127,8 @@ function printGreenfieldPlaybook() {
   console.log(dim('For repos with no existing code, where hydrate owns the scaffolding from day one.'));
   console.log('');
 
-  printStep(1, 'hydrate init', 'Creates AI_PROJECT_RULES.md, ROADMAP.md, .hydrate/CURRENT_UOW.md, and docs/journals/dev-journal.md. Existing files are never overwritten.');
-  printStep(2, 'Edit ROADMAP.md', 'Product Owner defines the milestone sequence as `## [ ] UOW-XX: ...` blocks.');
+  printStep(1, 'hydrate init', 'Creates CLAUDE.md, .hydrate/CURRENT_UOW.md, and docs/SYSTEM.md. Existing files are never overwritten.');
+  printStep(2, 'Edit docs/SYSTEM.md', 'Product Owner defines the milestone sequence in Section 2 as `- [ ] **UOW-XX:** ...` bullets.');
   printStep(3, 'hydrate prompt', "Assembles the active UOW into .hydrate/CURRENT_UOW.md as the Lead Developer's execution payload.");
   printStep(4, 'hydrate prompt --architect', '(optional) Generates a chunked sync payload for the Lead Architect (Gemini).');
   printStep(5, 'hydrate iterate "<reason>"', '(as needed) Logs a bug-fix/polish pass against the active UOW without losing its original scope.');
@@ -146,7 +146,7 @@ function printBrownfieldPlaybook() {
 
   printStep(1, 'hydrate inject', 'Auto-detects stack/commands from package.json, tsconfig.json, and git log, then non-destructively syncs CLAUDE.md + .hydrate/session.json. Zero prompts.');
   printStep(2, 'Review CLAUDE.md', 'Content inside the HYDRATE markers is regenerated on every inject; edit outside the markers for anything that should persist.');
-  printStep(3, 'hydrate init', '(optional) Adds ROADMAP.md + .hydrate/CURRENT_UOW.md if you also want UOW tracking, not just the CLAUDE.md sync.');
+  printStep(3, 'hydrate init', '(optional) Adds docs/SYSTEM.md + .hydrate/CURRENT_UOW.md if you also want UOW tracking, not just the CLAUDE.md sync.');
   printStep(4, 'hydrate prompt', 'Assembles the active UOW into .hydrate/CURRENT_UOW.md.');
   printStep(5, 'hydrate iterate "<reason>"', '(as needed) Logs a bug-fix/polish pass against the active UOW.');
   printStep(6, 'hydrate complete', 'Checks the UOW off and resets the canvas for the next one.');

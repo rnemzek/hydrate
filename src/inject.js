@@ -128,7 +128,7 @@ function runInject() {
 
 ⚡ NEXT STEPS:
    1. Review CLAUDE.md — content outside the HYDRATE markers is yours to edit freely.
-   2. Run 'hydrate init' if you also want ROADMAP.md / UOW tracking scaffolding.
+   2. Run 'hydrate init' if you also want docs/SYSTEM.md / UOW tracking scaffolding.
    3. Re-run 'hydrate inject' any time to refresh detected stack/commands.
   `);
 
