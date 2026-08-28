@@ -40,4 +40,4 @@
 
 ### 5.4 Autonomous Fast-Start Triggers
 - **Local to this repo only — deliberately excluded from `templates/CLAUDE.md.template` so downstream `hydrate init` users get the clean 5.1–5.3 baseline, not this section.**
-- When prompted with **"LFG"**, **"Andiamo"**, **"Vamos"**, **"Allons-y"**, **"Lass uns gehen"**, or **"Execute active UOW"**, immediately parse `.hydrate/CURRENT_UOW.md`, begin implementation, verify via `npm test`, and commit upon clean test pass without requesting intermediate setup approvals.
+- When prompted with **"LFG"**, **"Andiamo"**, **"Vamanos"**, **"Vamos"**, **"Allons-y"**, **"Lass uns gehen"**, or **"Execute active UOW"**, immediately parse `.hydrate/CURRENT_UOW.md`, begin implementation, verify via `npm test`, and commit upon clean test pass without requesting intermediate setup approvals.

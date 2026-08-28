@@ -1,26 +1,20 @@
 const fs = require('fs');
 const path = require('path');
 
-const HELP_FLAGS = ['--help', '-h'];
+const HELP_FLAGS = ['--help', '-h', '?'];
 const VERSION_FLAGS = ['--version', '-v'];
 
 const GLOBAL_FLAGS = [
-  ['-h, --help', 'Display help for the CLI or a specific command.'],
+  ['-h, --help, ?', 'Display help for the CLI or a specific command.'],
   ['-v, --version', 'Print the installed hydrate version.']
 ];
 
 const COMMANDS = {
   init: {
-    summary: 'Scaffold the Hydrate harness in the current repo.',
+    summary: 'Scaffold the 3-artifact Hydrate harness (CLAUDE.md, .hydrate/CURRENT_UOW.md, docs/SYSTEM.md) in the current repo.',
     usage: 'hydrate init',
     options: [],
     examples: ['hydrate init']
-  },
-  inject: {
-    summary: 'Zero-config retrofit: auto-discover stack/commands and sync CLAUDE.md + .hydrate/session.json.',
-    usage: 'hydrate inject',
-    options: [],
-    examples: ['hydrate inject']
   },
   prompt: {
     summary: 'Sync active UOW payload to .hydrate/CURRENT_UOW.md.',
@@ -31,14 +25,6 @@ const COMMANDS = {
       ['-c, --copy', 'Also copy the generated payload to the system clipboard.']
     ],
     examples: ['hydrate prompt', 'hydrate prompt --copy', 'hydrate prompt --architect', 'hydrate prompt --architect --chunk-size=4000']
-  },
-  iterate: {
-    summary: 'Spawn an iteration pass (UOW-##.i1, i2) for bug fixes / UX polish.',
-    usage: 'hydrate iterate "<reason>"',
-    options: [
-      ['"<reason>"', 'Free-text description of the bug fix or polish pass (positional).']
-    ],
-    examples: ['hydrate iterate "Fix off-by-one in chunker"']
   },
   complete: {
     summary: 'Mark current UOW complete in docs/SYSTEM.md and log iteration count.',
@@ -59,55 +45,11 @@ const COMMANDS = {
   },
   clip: {
     summary: 'Copy the active .hydrate/CURRENT_UOW.md context to the system clipboard.',
-    usage: 'hydrate clip   (alias: hydrate copy)',
+    usage: 'hydrate clip',
     options: [],
-    examples: ['hydrate clip', 'hydrate copy']
-  },
-  adopt: {
-    summary: 'Brownfield adoption: discover legacy AI context files and non-destructively merge them into CONTEXT.md.',
-    usage: 'hydrate adopt [--all] [--target=<path>]',
-    options: [
-      ['--all', 'Adopt every discovered file without the interactive prompt.'],
-      ['--target=<path>', 'Merge target file, relative to the repo root (default: CONTEXT.md).']
-    ],
-    examples: ['hydrate adopt', 'hydrate adopt --all', 'hydrate adopt --target=docs/CONTEXT.md']
-  },
-  'setup-cc': {
-    summary: 'Scaffold .claude/commands/hydrate.md so /hydrate runs `hydrate prompt --copy` inside Claude Code.',
-    usage: 'hydrate setup-cc',
-    options: [],
-    examples: ['hydrate setup-cc']
-  },
-  greenfield: {
-    summary: 'Show the step-by-step playbook for starting a brand-new project with hydrate.',
-    usage: 'hydrate greenfield',
-    options: [],
-    examples: ['hydrate greenfield']
-  },
-  brownfield: {
-    summary: 'Show the step-by-step playbook for retrofitting hydrate onto an existing repo.',
-    usage: 'hydrate brownfield',
-    options: [],
-    examples: ['hydrate brownfield']
-  },
-  next: {
-    summary: 'Diagnose the current repo state and recommend the next command to run.',
-    usage: 'hydrate next   (aliases: hydrate ?, hydrate lost)',
-    options: [],
-    examples: ['hydrate next', 'hydrate ?', 'hydrate lost']
+    examples: ['hydrate clip']
   }
 };
-
-// '?' and 'lost' are aliases of 'next' — registered so `hydrate ? --help` /
-// `hydrate lost --help` resolve, but hidden from the COMMANDS listing so the
-// global help screen doesn't show the same row three times.
-COMMANDS['?'] = { ...COMMANDS.next, hidden: true };
-COMMANDS.lost = { ...COMMANDS.next, hidden: true };
-
-// 'copy' is an alias of 'clip', same hidden-row pattern as above.
-COMMANDS.copy = { ...COMMANDS.clip, hidden: true };
-
-const GUIDE_ALIASES = ['?', 'lost', 'next'];
 
 let cachedPkg = null;
 function getPkg() {
@@ -152,21 +94,11 @@ function printGlobalHelp() {
   console.log('  $ hydrate <command> [flags]');
   console.log('');
 
-  console.log(bold(yellow('🌱 GREENFIELD PATH (1-2-3)')) + dim('  — starting a brand-new project'));
-  console.log(`  1. ${green('hydrate init')}       Scaffold ROADMAP.md + .hydrate/`);
-  console.log(`  2. ${green('hydrate prompt')}     Load the active UOW into context`);
-  console.log(`  3. ${green('hydrate complete')}   Close out the UOW when done`);
-  console.log(dim('  Full walkthrough: ') + green('hydrate greenfield'));
-  console.log('');
-
-  console.log(bold(cyan('🏗  BROWNFIELD PATH (4-5-6)')) + dim('  — retrofitting an existing repo'));
-  console.log(`  4. ${green('hydrate inject')}     Auto-detect stack, sync CLAUDE.md`);
-  console.log(`  5. ${green('hydrate init')}       (optional) add UOW tracking`);
-  console.log(`  6. ${green('hydrate prompt')}     Load the active UOW into context`);
-  console.log(dim('  Full walkthrough: ') + green('hydrate brownfield'));
-  console.log('');
-
-  console.log(dim('  Not sure which one you need? Run ') + yellow('hydrate ?') + dim(' (aliases: lost, next) for a live diagnosis.'));
+  console.log(bold(yellow('💧 THE 3-ARTIFACT WORKFLOW (1-2-3)')));
+  console.log(`  1. ${green('hydrate init')}       Scaffold CLAUDE.md, .hydrate/CURRENT_UOW.md, docs/SYSTEM.md`);
+  console.log(`  2. ${green('hydrate prompt')}     Load the active UOW into .hydrate/CURRENT_UOW.md`);
+  console.log(`  3. ${green('hydrate complete')}   Close out the UOW when every task is checked off`);
+  console.log(dim('  Use ') + green('hydrate clip') + dim(' any time to copy the active UOW payload to your clipboard.'));
   console.log('');
 
   console.log(bold('COMMANDS'));
@@ -186,11 +118,9 @@ function printGlobalHelp() {
   console.log('  $ hydrate prompt --architect');
   console.log('  $ hydrate prompt --copy');
   console.log('  $ hydrate clip');
-  console.log('  $ hydrate adopt');
-  console.log('  $ hydrate setup-cc');
+  console.log('  $ hydrate complete --force');
   console.log('  $ hydrate <command> --help');
   console.log('  $ hydrate --version');
-  console.log('  $ hydrate ?');
   console.log('');
 }
 
@@ -240,7 +170,6 @@ module.exports = {
   HELP_FLAGS,
   VERSION_FLAGS,
   COMMANDS,
-  GUIDE_ALIASES,
   printVersion,
   printGlobalHelp,
   printCommandHelp,

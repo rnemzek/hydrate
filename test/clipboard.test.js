@@ -102,7 +102,7 @@ test('copyToClipboard() returns false on a platform with no known clipboard tool
   assert.equal(result, false);
 });
 
-// CLI-level: `hydrate clip` / `hydrate copy` ---------------------------------
+// CLI-level: `hydrate clip` ---------------------------------------------------
 
 test('hydrate clip errors when there is no active CURRENT_UOW.md', () => {
   const cwd = makeTempDir('hydrate-clip-test-');
@@ -139,16 +139,15 @@ test('hydrate clip pipes CURRENT_UOW.md content through the platform clipboard t
   }
 });
 
-test('hydrate copy is an alias for hydrate clip', () => {
+test('hydrate copy is pruned (v2 command surface is `clip` only) and falls back to global help', () => {
   const cwd = makeTempDir('hydrate-copy-test-');
   try {
     fs.mkdirSync(path.join(cwd, '.hydrate'));
     fs.writeFileSync(path.join(cwd, '.hydrate', 'CURRENT_UOW.md'), '## UOW-77\n');
-    // Deny lookup of any real clipboard tool so this only asserts the fallback path fires
-    // (i.e. `copy` reached the same handler as `clip`), independent of host tooling.
     const result = runCli(['copy'], cwd, { PATH: '' });
     assert.equal(result.status, 0);
-    assert.match(result.stdout, /No clipboard tool found|Copied UOW context to clipboard/);
+    assert.match(result.stdout, /commands/i);
+    assert.doesNotMatch(result.stdout, /No clipboard tool found|Copied UOW context to clipboard/);
   } finally {
     fs.rmSync(cwd, { recursive: true, force: true });
   }

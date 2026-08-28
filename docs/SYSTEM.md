@@ -10,11 +10,10 @@
 **Module map**
 - `src/templates.js` — loads/renders `templates/*.template` files (`{{PLACEHOLDER}}` substitution).
 - `src/init.js` — `scaffold()` idempotently writes the 3 canonical artifacts into a target repo.
-- `bin/cli.js` — command dispatch; owns `prompt` (sync active UOW payload from `docs/SYSTEM.md` + `CLAUDE.md`) and `complete` (mark done in `docs/SYSTEM.md`, log to Section 4, archive, reset) directly.
-- `src/adopt.js` — brownfield adoption: merges legacy AI context files (`.cursorrules`, `AGENTS.md`, old `CLAUDE.md`, etc.) into `CONTEXT.md`, then runs `scaffold()`.
-- `src/inject.js` / `src/discover.js` — zero-config stack discovery, syncs a `HYDRATE:BEGIN/END`-marked section into `CLAUDE.md`.
-- `src/guide.js` — `hydrate ?` / `next` / `lost` state diagnosis, plus the greenfield/brownfield playbooks.
-- `src/clipboard.js`, `src/setupCc.js`, `src/help.js` — clipboard piping, `.claude/commands/hydrate.md` scaffolding, and CLI help/usage text.
+- `bin/cli.js` — command dispatch for the strict v2 surface (`init`, `prompt`, `clip`, `complete`, `help`, plus `-h`/`-v`/`?` aliases); owns `prompt` (sync active UOW payload from `docs/SYSTEM.md` + `CLAUDE.md`) and `complete` (mark done in `docs/SYSTEM.md`, log to Section 4, archive, reset) directly.
+- `src/clipboard.js`, `src/help.js` — clipboard piping and CLI help/usage text.
+
+**Pruned in UOW-02 (v2 Refactor):** `src/adopt.js`, `src/inject.js`, `src/discover.js`, `src/guide.js`, `src/setupCc.js` — the v1 `adopt`/`inject`/`iterate`/`setup-cc`/`greenfield`/`brownfield`/`next`/`lost`/`copy` command entry points and their backing modules.
 
 ## 2. Tactical Roadmap & Task Index
 - [x] **UOW-01:** Core CLI Inject & Init Engine (`.hydrate/` setup)
@@ -36,3 +35,7 @@
 ### UOW-01 — completed 2026-08-28
 - Iterations logged: 0
 - Suggested commit: `feat: complete UOW-01`
+
+### UOW-02 — completed 2026-08-28
+- Iterations logged: 0
+- Suggested commit: `feat: complete UOW-02`

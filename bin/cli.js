@@ -3,12 +3,8 @@
 const fs = require('fs');
 const path = require('path');
 const { runInit } = require('../src/init');
-const { runInject } = require('../src/inject');
 const { HELP_FLAGS, VERSION_FLAGS, COMMANDS, printVersion, printGlobalHelp, printCommandHelp } = require('../src/help');
-const { runGuide, printGreenfieldPlaybook, printBrownfieldPlaybook, findOpenTasks } = require('../src/guide');
 const { copyToClipboard } = require('../src/clipboard');
-const { runAdopt } = require('../src/adopt');
-const { runSetupCc } = require('../src/setupCc');
 const { loadTemplate } = require('../src/templates');
 
 const args = process.argv.slice(2);
@@ -35,16 +31,8 @@ switch (command) {
     runInit();
     break;
 
-  case 'inject':
-    runInject();
-    break;
-
   case 'prompt':
     generatePrompt(rest);
-    break;
-
-  case 'iterate':
-    handleIterate(rest);
     break;
 
   case 'complete':
@@ -52,30 +40,7 @@ switch (command) {
     break;
 
   case 'clip':
-  case 'copy':
     handleClip();
-    break;
-
-  case 'adopt':
-    handleAdopt(rest);
-    break;
-
-  case 'setup-cc':
-    runSetupCc();
-    break;
-
-  case '?':
-  case 'lost':
-  case 'next':
-    runGuide();
-    break;
-
-  case 'greenfield':
-    printGreenfieldPlaybook();
-    break;
-
-  case 'brownfield':
-    printBrownfieldPlaybook();
     break;
 
   default:
@@ -119,6 +84,17 @@ function getPaths() {
     hydrateDir: path.join(cwd, '.hydrate'),
     currentUowPath: path.join(cwd, '.hydrate', 'CURRENT_UOW.md')
   };
+}
+
+// Reuses the "- [ ]" checklist convention docs/SYSTEM.md and
+// .hydrate/CURRENT_UOW.md share, but returns the actual lines so
+// `hydrate complete` can print exactly which tasks are still open instead of
+// just a yes/no.
+function findOpenTasks(content) {
+  return content
+    .split('\n')
+    .filter((line) => /^\s*-\s\[\s\]/.test(line))
+    .map((line) => line.trim());
 }
 
 // Scans docs/SYSTEM.md's "## 2." (Tactical Roadmap & Task Index) section for
@@ -223,16 +199,15 @@ Read this payload and stand by. Do not execute destructive file edits until inst
 ⚡ NEXT STEPS:
    1. Run 'hydrate prompt --architect' to get Gemini's sync payload.
    2. Launch 'yolo' and type 'hydrate' to lock Claude Code onto this task.
-   3. Found a bug or tweak? Run 'hydrate iterate "Your bug description"'
+   3. Run 'hydrate complete' once every task above is checked off.
   `);
 
   if (shouldCopy) copyWithFeedback(devPayload);
 }
 
-// Shared by `hydrate prompt --copy` and `hydrate clip`/`copy`: tries the
-// platform clipboard tool and falls back to printing `text` to stdout so
-// the payload is never just silently lost when pbcopy/xclip/xsel/clip
-// aren't installed.
+// Shared by `hydrate prompt --copy` and `hydrate clip`: tries the platform
+// clipboard tool and falls back to printing `text` to stdout so the payload
+// is never just silently lost when pbcopy/xclip/xsel/clip aren't installed.
 function copyWithFeedback(text, { printFallback = true } = {}) {
   const copied = copyToClipboard(text);
 
@@ -260,57 +235,6 @@ function handleClip() {
 
   const content = fs.readFileSync(currentUowPath, 'utf8');
   copyWithFeedback(content);
-}
-
-function handleAdopt(options) {
-  const targetArg = options.find((arg) => arg.startsWith('--target='));
-  const target = targetArg ? targetArg.slice('--target='.length) : undefined;
-  const all = options.includes('--all') || options.includes('-a');
-
-  runAdopt({ target, all }).catch((err) => {
-    console.error(`❌ Error: ${err.message}`);
-    process.exit(1);
-  });
-}
-
-function handleIterate(options) {
-  const { currentUowPath } = getPaths();
-
-  if (!fs.existsSync(currentUowPath)) {
-    console.error("❌ Error: No active .hydrate/CURRENT_UOW.md found. Run `hydrate prompt` first!");
-    process.exit(1);
-  }
-
-  const reason = options.join(' ').replace(/^["']|["']$/g, '') || "Bug fix / design polish pass";
-  let content = fs.readFileSync(currentUowPath, 'utf8');
-
-  // Parse base UOW ID
-  const uowMatch = content.match(/UOW-[\d\w]+/);
-  const baseUow = uowMatch ? uowMatch[0] : 'UOW-XX';
-
-  // Count existing iteration passes
-  const iterMatches = [...content.matchAll(/\[Iteration Pass\] UOW-[\d\w]+\.i(\d+)/g)];
-  const nextIterNum = iterMatches.length > 0 ? Math.max(...iterMatches.map(m => parseInt(m[1], 10))) + 1 : 1;
-  const iterationTag = `${baseUow}.i${nextIterNum}`;
-
-  const iterationBlock = `
-
----
-
-## [Iteration Pass] ${iterationTag} — ${reason}
-> Added during testing (${new Date().toLocaleDateString()}): ${reason}
-
-- [ ] **Task ${iterationTag}.1:** Fix/Implement ${reason}
-- [ ] **Task ${iterationTag}.2:** Verify build via \`npm run build\` and run \`npm test\`
-`;
-
-  fs.appendFileSync(currentUowPath, iterationBlock, 'utf8');
-
-  console.log(`
-🔁 Iteration Pass Spawned!
-  ✔ Appended [Iteration Pass] ${iterationTag} to .hydrate/CURRENT_UOW.md
-  📝 Reason: ${reason}
-`);
 }
 
 function handleComplete(options = []) {
