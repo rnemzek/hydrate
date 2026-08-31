@@ -2,8 +2,8 @@
 
 ## 1. Operating Triad Contract
 - **Product Owner (Human):** Final authority on scope, acceptance criteria, trade-offs, and repo commits.
-- **Lead Architect (Gemini):** System design, stack boundaries, multi-file architectural consistency, and UOW payload specification.
-- **Lead Developer (Claude Code):** Surgical file edits, unit testing, local execution, quality gate enforcement, and git commits upon verification.
+- **Lead Architect (Gemini):** System design, stack boundaries, multi-file architectural consistency, and UOW payload specification. Writes `.hydrate/CURRENT_UOW.md` and `.hydrate/ROADMAP.md`.
+- **Lead Developer (Claude Code):** Surgical file edits, unit testing, local execution, quality gate enforcement, and git commits upon verification. Appends execution summaries to `.hydrate/` journals upon task completion.
 
 ## 2. Technical Stack Constraints & Quality Gates
 - **Primary Languages & Runtimes:** Vanilla JavaScript (ES Modules), Node.js, Web Browsers, Hono (backend server).
@@ -18,10 +18,17 @@
 - **Autonomous Execution:** You are authorized to execute all local file reads/writes, directory searches, npm test runs, git commands, and shell tools headlessly without requesting interactive human approval.
 - **Non-Interactive Preference:** Execute all tool calls directly and sequentially to fulfill the active UOW payload without pausing for intermediate prompt confirmations.
 
-## 4. Surgical Execution Boundaries
+## 4. Surgical Execution Boundaries & Hydration Artifact Protocol
 - Focus ONLY on the scope defined in `.hydrate/CURRENT_UOW.md`.
 - Do NOT rewrite unrelated modules, refactor untouched files, or introduce unrequested frameworks/dependencies.
-- Always log completed tasks, modified files, test results, and coverage metrics to `docs/SYSTEM.md` (Section 4: Decision & Execution Log) upon completion.
+- **File Access Rules:**
+  - **READ-ONLY:** `.hydrate/CURRENT_UOW.md` and `.hydrate/ROADMAP.md` (managed strictly by PO/Lead Architect).
+  - **APPEND-ONLY:** `.hydrate/PROJECT_JOURNAL.md`, `.hydrate/DEV_JOURNAL.md`, and `.hydrate/ARCHITECT_JOURNAL.md`.
+  - **MOVE/ARCHIVE:** Upon 100% completion and verification of a UOW, move `.hydrate/CURRENT_UOW.md` to `.hydrate/archive/UOW-XX.md`.
+- **Completion Logging Protocols (Append-Only):**
+  - **`PROJECT_JOURNAL.md`:** Append a single checklist line: `- [x] **[UOW-XX]** Title — YYYY-MM-DD | Pass: N/N tests`
+  - **`DEV_JOURNAL.md`:** Append detailed implementation summary, files touched, bug fixes, edge cases handled, and test suite counts.
+  - **`ARCHITECT_JOURNAL.md`:** Append architecture updates, modified contracts, pub/sub payload schemas, newly established abstractions, and technical trade-offs.
 
 ## 5. Fast-Path Protocol & Autonomous Execution Rules
 
@@ -35,9 +42,10 @@
 - **Execution Rule:** When the Product Owner requests a minor tweak during a test drive, append a concise `[UOW-HOTFIX]` bullet directly to `.hydrate/CURRENT_UOW.md`, implement immediately, verify with tests, and commit with `fix(ui):` or `refactor(ui):`.
 
 ### 5.3 One-Shot Context Transition & Autonomous Plan Execution
-- When transitioning between completed work and new requests, combine uncommitted tree cleanup, logging to `docs/SYSTEM.md`, and task execution into a single seamless run without prompting through multi-step intermediate menus unless explicit ambiguity exists.
+- When transitioning between completed work and new requests, combine uncommitted tree cleanup, logging to `.hydrate/*_JOURNAL.md` files, and task execution into a single seamless run without prompting through multi-step intermediate menus unless explicit ambiguity exists.
 - When executing plan mode for a validated UOW, proceed immediately with implementation and verification without holding for secondary plan approvals if the spec in `.hydrate/CURRENT_UOW.md` fully defines the acceptance criteria.
 
 ### 5.4 Autonomous Fast-Start Triggers
-- **Local to this repo only — deliberately excluded from `templates/CLAUDE.md.template` so downstream `hydrate init` users get the clean 5.1–5.3 baseline, not this section.**
-- When prompted with **"LFG"**, **"Andiamo"**, **"Vamanos"**, **"Vamos"**, **"Allons-y"**, **"Lass uns gehen"**, or **"Execute active UOW"**, immediately parse `.hydrate/CURRENT_UOW.md`, begin implementation, verify via `npm test`, and commit upon clean test pass without requesting intermediate setup approvals.
+- **Local to this repo only — deliberately excluded from `templates/CLAUDE.md.template` so downstream `hydrate init` users receive a clean baseline.**
+- When prompted with **"LFG"**, **"Andiamo"**, **"Vámonos"**, **"Vamos"**, **"Allons-y"**, **"Lass uns gehen"**, **"Make it so"**, or **"Execute active UOW"**, immediately parse `.hydrate/CURRENT_UOW.md`, begin implementation, verify via `npm test`, log completions to `.hydrate/*_JOURNAL.md` files, and commit upon clean test pass without requesting intermediate setup approvals.
+

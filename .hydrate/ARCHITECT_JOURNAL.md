@@ -1,3 +1,5 @@
+# Architect Journal - hydrate
+
 # hydrate — System Documentation
 
 ## 1. Living Architecture & System Overview
