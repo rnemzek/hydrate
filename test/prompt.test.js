@@ -24,20 +24,20 @@ function runCli(args, cwd) {
   return spawnSync(process.execPath, [CLI_PATH, ...args], { encoding: 'utf8', cwd });
 }
 
-test('hydrate prompt errors when docs/SYSTEM.md and CLAUDE.md are both missing', () => {
+test('hydrate prompt errors when .hydrate/ROADMAP.md and CLAUDE.md are both missing', () => {
   withTempDir((dir) => {
     const result = runCli(['prompt'], dir);
     assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /Missing docs\/SYSTEM\.md or CLAUDE\.md/);
+    assert.match(result.stderr, /Missing \.hydrate\/ROADMAP\.md or CLAUDE\.md/);
   });
 });
 
-test('hydrate prompt pulls the next pending UOW out of docs/SYSTEM.md Section 2 when CURRENT_UOW.md is reset', () => {
+test('hydrate prompt pulls the next pending UOW out of .hydrate/ROADMAP.md Section 1 when CURRENT_UOW.md is reset', () => {
   withTempDir((dir) => {
     runCli(['init'], dir);
     fs.writeFileSync(
-      path.join(dir, 'docs', 'SYSTEM.md'),
-      '# Sys\n\n## 2. Tactical Roadmap & Task Index\n- [x] **UOW-01**: Done already\n- [ ] **UOW-02**: Next up\n\n## 3. Backlog\n- Idea\n\n## 4. Decision & Execution Log\n'
+      path.join(dir, '.hydrate', 'ROADMAP.md'),
+      '# Roadmap\n\n## Section 1: Scheduled Roadmap Items\n- [x] **UOW-01**: Done already\n- [ ] **UOW-02**: Next up\n\n---\n\n## Section 2: Future features\n'
     );
 
     const result = runCli(['prompt'], dir);
@@ -49,7 +49,7 @@ test('hydrate prompt pulls the next pending UOW out of docs/SYSTEM.md Section 2 
   });
 });
 
-test('hydrate prompt leaves an in-progress CURRENT_UOW.md untouched by the docs/SYSTEM.md fallback', () => {
+test('hydrate prompt leaves an in-progress CURRENT_UOW.md untouched by the ROADMAP.md fallback', () => {
   withTempDir((dir) => {
     runCli(['init'], dir);
     fs.writeFileSync(

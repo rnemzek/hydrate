@@ -80,13 +80,14 @@ function getPaths() {
   return {
     cwd,
     claudePath: path.join(cwd, 'CLAUDE.md'),
-    systemPath: path.join(cwd, 'docs', 'SYSTEM.md'),
+    roadmapPath: path.join(cwd, '.hydrate', 'ROADMAP.md'),
+    projectJournalPath: path.join(cwd, '.hydrate', 'PROJECT_JOURNAL.md'),
     hydrateDir: path.join(cwd, '.hydrate'),
     currentUowPath: path.join(cwd, '.hydrate', 'CURRENT_UOW.md')
   };
 }
 
-// Reuses the "- [ ]" checklist convention docs/SYSTEM.md and
+// Reuses the "- [ ]" checklist convention .hydrate/ROADMAP.md and
 // .hydrate/CURRENT_UOW.md share, but returns the actual lines so
 // `hydrate complete` can print exactly which tasks are still open instead of
 // just a yes/no.
@@ -97,21 +98,21 @@ function findOpenTasks(content) {
     .map((line) => line.trim());
 }
 
-// Scans docs/SYSTEM.md's "## 2." (Tactical Roadmap & Task Index) section for
-// the first unchecked `- [ ] ...` bullet, used as a fallback active-UOW
-// scope when .hydrate/CURRENT_UOW.md is empty/reset. Returns null if the
-// section is missing or every item is checked off.
-function findNextPendingUow(systemText) {
-  const lines = systemText.split('\n');
-  let inSection2 = false;
+// Scans .hydrate/ROADMAP.md's "## Section 1" (Scheduled Roadmap Items)
+// section for the first unchecked `- [ ] ...` bullet, used as a fallback
+// active-UOW scope when .hydrate/CURRENT_UOW.md is empty/reset. Returns null
+// if the section is missing or every item is checked off.
+function findNextPendingUow(roadmapText) {
+  const lines = roadmapText.split('\n');
+  let inSection1 = false;
 
   for (const line of lines) {
-    if (/^##\s*2\./.test(line)) {
-      inSection2 = true;
+    if (/^##\s*Section 1\b/i.test(line)) {
+      inSection1 = true;
       continue;
     }
-    if (inSection2 && /^##\s*\d/.test(line)) break;
-    if (!inSection2) continue;
+    if (inSection1 && /^##\s/.test(line)) break;
+    if (!inSection1) continue;
 
     const match = line.match(/^\s*-\s\[ \]\s*(.+)$/);
     if (match) return match[1].trim();
@@ -121,14 +122,14 @@ function findNextPendingUow(systemText) {
 }
 
 function generatePrompt(options) {
-  const { cwd, claudePath, systemPath, hydrateDir, currentUowPath } = getPaths();
+  const { cwd, claudePath, roadmapPath, hydrateDir, currentUowPath } = getPaths();
 
-  if (!fs.existsSync(systemPath) || !fs.existsSync(claudePath)) {
-    console.error("❌ Error: Missing docs/SYSTEM.md or CLAUDE.md. Run `hydrate init` first!");
+  if (!fs.existsSync(roadmapPath) || !fs.existsSync(claudePath)) {
+    console.error("❌ Error: Missing .hydrate/ROADMAP.md or CLAUDE.md. Run `hydrate init` first!");
     process.exit(1);
   }
 
-  const systemText = fs.readFileSync(systemPath, 'utf8');
+  const roadmapText = fs.readFileSync(roadmapPath, 'utf8');
   const rulesText = fs.readFileSync(claudePath, 'utf8');
 
   // Read active UOW from .hydrate/CURRENT_UOW.md if it exists
@@ -138,8 +139,8 @@ function generatePrompt(options) {
   }
 
   if (!activeUowScope || activeUowScope.includes("All UOWs are complete!")) {
-    // Fall back to scanning docs/SYSTEM.md's Task Index for the next pending UOW
-    const pending = findNextPendingUow(systemText);
+    // Fall back to scanning .hydrate/ROADMAP.md's Task Index for the next pending UOW
+    const pending = findNextPendingUow(roadmapText);
     activeUowScope = pending || "All UOWs are complete!";
   }
 
@@ -238,7 +239,7 @@ function handleClip() {
 }
 
 function handleComplete(options = []) {
-  const { cwd, systemPath, currentUowPath } = getPaths();
+  const { cwd, roadmapPath, projectJournalPath, currentUowPath } = getPaths();
   const force = options.includes('--force') || options.includes('-f');
 
   if (!fs.existsSync(currentUowPath)) {
@@ -269,28 +270,33 @@ ${openTasks.map((line) => `  ${line}`).join('\n')}
   const iterCount = ([...uowContent.matchAll(/\[Iteration Pass\]/g)] || []).length;
   const titleMatch = uowContent.match(/\*\*Title:\*\*\s*(.+)/);
   const commitSubject = titleMatch ? `feat: complete ${baseUow} — ${titleMatch[1].trim()}` : `feat: complete ${baseUow}`;
-  const systemRelPath = path.relative(cwd, systemPath);
+  const roadmapRelPath = path.relative(cwd, roadmapPath);
+  const projectJournalRelPath = path.relative(cwd, projectJournalPath);
 
-  let markedInSystem = false;
-  if (fs.existsSync(systemPath)) {
-    let systemText = fs.readFileSync(systemPath, 'utf8');
+  let markedInRoadmap = false;
+  if (fs.existsSync(roadmapPath)) {
+    let roadmapText = fs.readFileSync(roadmapPath, 'utf8');
 
     // Matches both heading style ("## [ ] UOW-05: Title") and list-item
     // style ("- [ ] **UOW-05**: Title" / "- [ ] **UOW-05:** Title") inside
-    // docs/SYSTEM.md's Tactical Roadmap & Task Index section.
+    // .hydrate/ROADMAP.md's Scheduled Roadmap Items section.
     const activeRegex = new RegExp(`^([-#]+) \\[ \\] (.*\\b${baseUow}\\b.*)$`, 'm');
-    if (activeRegex.test(systemText)) {
-      systemText = systemText.replace(activeRegex, (_match, prefix, rest) => `${prefix} [x] ${rest} (Iterated: ${iterCount})`);
-      markedInSystem = true;
+    if (activeRegex.test(roadmapText)) {
+      roadmapText = roadmapText.replace(activeRegex, (_match, prefix, rest) => `${prefix} [x] ${rest} (Iterated: ${iterCount})`);
+      markedInRoadmap = true;
+      fs.writeFileSync(roadmapPath, roadmapText, 'utf8');
     }
+  }
 
-    // Append-only completion entry to Section 4: Decision & Execution Log
-    // (the template's final section, so appending to end-of-file lands it there).
+  const loggedToJournal = fs.existsSync(projectJournalPath);
+  if (loggedToJournal) {
+    // Append-only completion entry to the end of .hydrate/PROJECT_JOURNAL.md.
+    let journalText = fs.readFileSync(projectJournalPath, 'utf8');
     const completedAt = new Date().toISOString().slice(0, 10);
     const logEntry = `### ${baseUow} — completed ${completedAt}\n- Iterations logged: ${iterCount}\n- Suggested commit: \`${commitSubject}\`\n`;
-    systemText = `${systemText.trimEnd()}\n\n${logEntry}`;
+    journalText = `${journalText.trimEnd()}\n\n${logEntry}`;
 
-    fs.writeFileSync(systemPath, systemText, 'utf8');
+    fs.writeFileSync(projectJournalPath, journalText, 'utf8');
   }
 
   // Archive the finished canvas before resetting it, so completed UOWs
@@ -302,14 +308,12 @@ ${openTasks.map((line) => `  ${line}`).join('\n')}
   const archiveRelPath = path.relative(process.cwd(), archivePath);
 
   // Clear CURRENT_UOW.md for next task
-  fs.writeFileSync(currentUowPath, loadTemplate('CURRENT_UOW.md'), 'utf8');
-
-  const loggedToSystem = fs.existsSync(systemPath);
+  fs.writeFileSync(currentUowPath, loadTemplate(path.join('.hydrate', 'CURRENT_UOW.md')), 'utf8');
 
   console.log(`
 🎉 ${baseUow} Officially Complete!
-  ${markedInSystem ? `✔ Marked ${baseUow} as [x] in ${systemRelPath} (Iterated: ${iterCount})\n  ` : ''}✔ Archived canvas to ${archiveRelPath}
-  ${loggedToSystem ? `✔ Logged completion to ${systemRelPath} (Section 4: Decision & Execution Log)\n  ` : ''}✔ Sprint scope reset in .hydrate/CURRENT_UOW.md
+  ${markedInRoadmap ? `✔ Marked ${baseUow} as [x] in ${roadmapRelPath} (Iterated: ${iterCount})\n  ` : ''}✔ Archived canvas to ${archiveRelPath}
+  ${loggedToJournal ? `✔ Logged completion to ${projectJournalRelPath}\n  ` : ''}✔ Sprint scope reset in .hydrate/CURRENT_UOW.md
   ✔ Total iteration passes logged: ${iterCount}${openTasks.length > 0 ? `\n  ⚠ Forced past ${openTasks.length} unchecked task${openTasks.length === 1 ? '' : 's'} (--force)` : ''}
 
 ⚡ Suggested commit:

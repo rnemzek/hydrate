@@ -2,11 +2,21 @@ const fs = require('fs');
 const path = require('path');
 const { loadTemplate, renderTemplate } = require('./templates');
 
-// Idempotently writes the canonical 3-artifact hydrate scaffold — CLAUDE.md,
-// .hydrate/CURRENT_UOW.md, and docs/SYSTEM.md — from templates/, skipping
-// any file that already exists. Returns only the files it actually created,
-// so callers can report exactly what changed instead of re-deriving it from
-// disk.
+// The 5 journal artifacts rendered into .hydrate/ on scaffold, each paired
+// with the console label printed when it's actually created.
+const HYDRATE_ARTIFACTS = [
+  { name: 'CURRENT_UOW.md', label: 'Created .hydrate/CURRENT_UOW.md (Active Execution Canvas)' },
+  { name: 'ROADMAP.md', label: 'Created .hydrate/ROADMAP.md (Tactical Roadmap & Task Index)' },
+  { name: 'PROJECT_JOURNAL.md', label: 'Created .hydrate/PROJECT_JOURNAL.md (Decision & Execution Log)' },
+  { name: 'DEV_JOURNAL.md', label: 'Created .hydrate/DEV_JOURNAL.md (Lead Developer Journal)' },
+  { name: 'ARCHITECT_JOURNAL.md', label: 'Created .hydrate/ARCHITECT_JOURNAL.md (Lead Architect Journal)' }
+];
+
+// Idempotently writes the canonical hydrate scaffold — CLAUDE.md plus the
+// 5-artifact .hydrate/ journal layout (and .hydrate/archive/) — from
+// templates/, skipping any file that already exists. Returns only the files
+// it actually created, so callers can report exactly what changed instead of
+// re-deriving it from disk.
 function scaffold(cwd) {
   const projectName = path.basename(cwd);
   const created = [];
@@ -16,9 +26,9 @@ function scaffold(cwd) {
     fs.mkdirSync(hydrateDir, { recursive: true });
   }
 
-  const docsDir = path.join(cwd, 'docs');
-  if (!fs.existsSync(docsDir)) {
-    fs.mkdirSync(docsDir, { recursive: true });
+  const archiveDir = path.join(hydrateDir, 'archive');
+  if (!fs.existsSync(archiveDir)) {
+    fs.mkdirSync(archiveDir, { recursive: true });
   }
 
   // 1. Operating Rules & AI Execution Protocol
@@ -28,18 +38,13 @@ function scaffold(cwd) {
     created.push({ path: claudePath, label: 'Created CLAUDE.md (Operating Rules & AI Execution Protocol)' });
   }
 
-  // 2. Active Execution Canvas
-  const currentUowPath = path.join(hydrateDir, 'CURRENT_UOW.md');
-  if (!fs.existsSync(currentUowPath)) {
-    fs.writeFileSync(currentUowPath, loadTemplate('CURRENT_UOW.md'), 'utf8');
-    created.push({ path: currentUowPath, label: 'Created .hydrate/CURRENT_UOW.md (Active Execution Canvas)' });
-  }
-
-  // 3. Living System Documentation (Architecture, Roadmap, Backlog, Decision Log)
-  const systemPath = path.join(docsDir, 'SYSTEM.md');
-  if (!fs.existsSync(systemPath)) {
-    fs.writeFileSync(systemPath, renderTemplate('SYSTEM.md', { PROJECT_NAME: projectName }), 'utf8');
-    created.push({ path: systemPath, label: 'Created docs/SYSTEM.md (Architecture, Roadmap & Decision Log)' });
+  // 2-6. The 5-artifact .hydrate/ journal layout
+  for (const { name, label } of HYDRATE_ARTIFACTS) {
+    const filePath = path.join(hydrateDir, name);
+    if (!fs.existsSync(filePath)) {
+      fs.writeFileSync(filePath, renderTemplate(path.join('.hydrate', name), { PROJECT_NAME: projectName }), 'utf8');
+      created.push({ path: filePath, label });
+    }
   }
 
   return created;
@@ -55,7 +60,7 @@ function runInit() {
 💧 @nemzilla/hydrate Harness Initialized!
 =====================================================
 1. Review CLAUDE.md and set your exact stack/quality gates.
-2. Define your task index & roadmap in docs/SYSTEM.md (Section 2).
+2. Define your task index & roadmap in .hydrate/ROADMAP.md (Section 1).
 3. Run 'hydrate prompt' to lock Claude Code onto the active UOW.
 `);
 }

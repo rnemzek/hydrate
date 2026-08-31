@@ -72,7 +72,6 @@ test('global help lists exactly the pruned v2 command surface', () => {
   assert.doesNotMatch(result.stdout, /setup-cc/);
   assert.doesNotMatch(result.stdout, /greenfield/);
   assert.doesNotMatch(result.stdout, /brownfield/);
-  assert.doesNotMatch(result.stdout, /ROADMAP\.md/);
   assert.doesNotMatch(result.stdout, /CONTEXT\.md/);
   assert.doesNotMatch(result.stdout, /AI_PROJECT_RULES\.md/);
 });

@@ -41,3 +41,12 @@
 ### UOW-02 — completed 2026-08-28
 - Iterations logged: 0
 - Suggested commit: `feat: complete UOW-02`
+
+### UOW-HYDRATE-01 — completed 2026-08-31
+**Scaffold Engine & Template Migration to `.hydrate/` Journal Architecture**
+
+- **Architecture change:** `hydrate init` now scaffolds a 6-artifact harness — `CLAUDE.md` (project root) plus `.hydrate/{CURRENT_UOW,ROADMAP,PROJECT_JOURNAL,DEV_JOURNAL,ARCHITECT_JOURNAL}.md` and `.hydrate/archive/` — replacing the prior 3-artifact `CLAUDE.md` / `.hydrate/CURRENT_UOW.md` / `docs/SYSTEM.md` split. `docs/SYSTEM.md` is no longer part of bootstrap.
+- **New abstraction:** `.hydrate/ROADMAP.md` (format: `## Section 1: Scheduled Roadmap Items` / `## Section 2: Future features`) now owns the task index that `docs/SYSTEM.md` Section 2 previously owned; `.hydrate/PROJECT_JOURNAL.md` now owns the completion/decision log that `docs/SYSTEM.md` Section 4 previously owned. `DEV_JOURNAL.md` and `ARCHITECT_JOURNAL.md` (this file) remain append-only, hand-maintained by the Lead Developer/Architect per CLAUDE.md Section 4 — `hydrate complete` does not write to them automatically.
+- **Contract:** `hydrate complete`'s roadmap-bullet-flip regex is unchanged (`^([-#]+) \[ \] (.*\bUOW-XX\b.*)$`), just retargeted from `docs/SYSTEM.md` to `.hydrate/ROADMAP.md`; `findNextPendingUow()` retargeted from `docs/SYSTEM.md`'s `## 2.` heading to `.hydrate/ROADMAP.md`'s `## Section 1` heading (case-insensitive prefix match).
+- **Trade-off:** Chose a full migration (scaffold + `bin/cli.js` prompt/complete + tests) over a hybrid that kept `docs/SYSTEM.md` generation alongside the new journals — confirmed with the Product Owner, since a hybrid would have left `hydrate prompt`/`hydrate complete` internally inconsistent with the new architecture and violated the UOW's "zero legacy references" requirement.
+- **Deferred:** the `hydrate complete` UOW-ID regex (`/UOW-[\d\w]+/`) still truncates hyphenated IDs like `UOW-HYDRATE-01` to `UOW-HYDRATE` — a pre-existing limitation, out of this UOW's surgical scope, left for a future UOW.

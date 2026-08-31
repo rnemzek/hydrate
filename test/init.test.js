@@ -20,10 +20,12 @@ function withTempDir(fn) {
   }
 }
 
+const HYDRATE_FILES = ['CURRENT_UOW.md', 'ROADMAP.md', 'PROJECT_JOURNAL.md', 'DEV_JOURNAL.md', 'ARCHITECT_JOURNAL.md'];
+
 // src/templates.js -------------------------------------------------------
 
 test('loadTemplate() returns the raw template contents', () => {
-  const content = loadTemplate('CURRENT_UOW.md');
+  const content = loadTemplate(path.join('.hydrate', 'CURRENT_UOW.md'));
   assert.match(content, /All UOWs are complete!/);
 });
 
@@ -34,20 +36,23 @@ test('renderTemplate() substitutes every occurrence of a placeholder', () => {
 });
 
 test('renderTemplate() leaves unmatched placeholders untouched', () => {
-  const rendered = renderTemplate('CURRENT_UOW.md', { UNUSED_KEY: 'x' });
-  assert.equal(rendered, loadTemplate('CURRENT_UOW.md'));
+  const name = path.join('.hydrate', 'CURRENT_UOW.md');
+  const rendered = renderTemplate(name, { UNUSED_KEY: 'x' });
+  assert.equal(rendered, loadTemplate(name));
 });
 
 // scaffold() ---------------------------------------------------------------
 
-test('scaffold() creates the 3 canonical artifacts from templates', () => {
+test('scaffold() creates CLAUDE.md, the 5-artifact .hydrate/ layout, and .hydrate/archive/', () => {
   withTempDir((dir) => {
     const created = scaffold(dir);
 
-    assert.equal(created.length, 3);
+    assert.equal(created.length, 6);
     assert.ok(fs.existsSync(path.join(dir, 'CLAUDE.md')));
-    assert.ok(fs.existsSync(path.join(dir, '.hydrate', 'CURRENT_UOW.md')));
-    assert.ok(fs.existsSync(path.join(dir, 'docs', 'SYSTEM.md')));
+    assert.ok(fs.existsSync(path.join(dir, '.hydrate', 'archive')));
+    for (const file of HYDRATE_FILES) {
+      assert.ok(fs.existsSync(path.join(dir, '.hydrate', file)), `expected .hydrate/${file} to exist`);
+    }
 
     const claude = fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8');
     assert.match(claude, new RegExp(`# ${path.basename(dir)} — Operating Rules`));
@@ -55,26 +60,30 @@ test('scaffold() creates the 3 canonical artifacts from templates', () => {
     const currentUow = fs.readFileSync(path.join(dir, '.hydrate', 'CURRENT_UOW.md'), 'utf8');
     assert.match(currentUow, /All UOWs are complete!/);
 
-    const system = fs.readFileSync(path.join(dir, 'docs', 'SYSTEM.md'), 'utf8');
-    assert.match(system, /## 2\. Tactical Roadmap & Task Index/);
-    assert.match(system, /## 4\. Decision & Execution Log/);
+    const roadmap = fs.readFileSync(path.join(dir, '.hydrate', 'ROADMAP.md'), 'utf8');
+    assert.match(roadmap, /## Section 1: Scheduled Roadmap Items/);
+    assert.match(roadmap, /## Section 2: Future features/);
+
+    const projectJournal = fs.readFileSync(path.join(dir, '.hydrate', 'PROJECT_JOURNAL.md'), 'utf8');
+    assert.match(projectJournal, new RegExp(`# ${path.basename(dir)} Project Journal`));
   });
 });
 
 test('scaffold() is idempotent: never overwrites existing files', () => {
   withTempDir((dir) => {
     fs.mkdirSync(path.join(dir, '.hydrate'), { recursive: true });
-    fs.mkdirSync(path.join(dir, 'docs'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'CLAUDE.md'), 'custom rules');
     fs.writeFileSync(path.join(dir, '.hydrate', 'CURRENT_UOW.md'), 'custom canvas');
-    fs.writeFileSync(path.join(dir, 'docs', 'SYSTEM.md'), 'custom system doc');
+    fs.writeFileSync(path.join(dir, '.hydrate', 'ROADMAP.md'), 'custom roadmap');
 
     const created = scaffold(dir);
 
-    assert.deepEqual(created, []);
+    assert.ok(!created.some((c) => c.path.endsWith('CLAUDE.md')));
+    assert.ok(!created.some((c) => c.path.endsWith(path.join('.hydrate', 'CURRENT_UOW.md'))));
+    assert.ok(!created.some((c) => c.path.endsWith(path.join('.hydrate', 'ROADMAP.md'))));
     assert.equal(fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8'), 'custom rules');
     assert.equal(fs.readFileSync(path.join(dir, '.hydrate', 'CURRENT_UOW.md'), 'utf8'), 'custom canvas');
-    assert.equal(fs.readFileSync(path.join(dir, 'docs', 'SYSTEM.md'), 'utf8'), 'custom system doc');
+    assert.equal(fs.readFileSync(path.join(dir, '.hydrate', 'ROADMAP.md'), 'utf8'), 'custom roadmap');
   });
 });
 
@@ -84,10 +93,11 @@ test('scaffold() only creates the files that are missing', () => {
 
     const created = scaffold(dir);
 
-    assert.equal(created.length, 2);
+    assert.equal(created.length, 5);
     assert.ok(!created.some((c) => c.path.endsWith('CLAUDE.md')));
-    assert.ok(fs.existsSync(path.join(dir, '.hydrate', 'CURRENT_UOW.md')));
-    assert.ok(fs.existsSync(path.join(dir, 'docs', 'SYSTEM.md')));
+    for (const file of HYDRATE_FILES) {
+      assert.ok(fs.existsSync(path.join(dir, '.hydrate', file)));
+    }
   });
 });
 
@@ -109,7 +119,10 @@ test('runInit() prints a checklist of created files and next steps', () => {
     const output = logs.join('\n');
     assert.match(output, /Created CLAUDE\.md/);
     assert.match(output, /Created \.hydrate\/CURRENT_UOW\.md/);
-    assert.match(output, /Created docs\/SYSTEM\.md/);
+    assert.match(output, /Created \.hydrate\/ROADMAP\.md/);
+    assert.match(output, /Created \.hydrate\/PROJECT_JOURNAL\.md/);
+    assert.match(output, /Created \.hydrate\/DEV_JOURNAL\.md/);
+    assert.match(output, /Created \.hydrate\/ARCHITECT_JOURNAL\.md/);
     assert.match(output, /Harness Initialized/);
   });
 });

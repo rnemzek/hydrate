@@ -11,7 +11,7 @@ const GLOBAL_FLAGS = [
 
 const COMMANDS = {
   init: {
-    summary: 'Scaffold the 3-artifact Hydrate harness (CLAUDE.md, .hydrate/CURRENT_UOW.md, docs/SYSTEM.md) in the current repo.',
+    summary: 'Scaffold the Hydrate harness (CLAUDE.md and the .hydrate/ journal files) in the current repo.',
     usage: 'hydrate init',
     options: [],
     examples: ['hydrate init']
@@ -27,13 +27,13 @@ const COMMANDS = {
     examples: ['hydrate prompt', 'hydrate prompt --copy', 'hydrate prompt --architect', 'hydrate prompt --architect --chunk-size=4000']
   },
   complete: {
-    summary: 'Mark current UOW complete in docs/SYSTEM.md and log iteration count.',
+    summary: 'Mark current UOW complete in .hydrate/ROADMAP.md and log iteration count.',
     usage: 'hydrate complete [--force]',
     whenToRun: 'All unit tests pass and the active UOW is done — every task in .hydrate/CURRENT_UOW.md is checked off.',
     whatItDoes: [
       'Aborts with no changes if unchecked "- [ ]" tasks remain in .hydrate/CURRENT_UOW.md (unless --force is passed).',
-      'Flips the matching UOW line in docs/SYSTEM.md (Section 2: Tactical Roadmap & Task Index) to [x], logging the total iteration-pass count.',
-      'Appends a completion entry to docs/SYSTEM.md (Section 4: Decision & Execution Log).',
+      'Flips the matching UOW line in .hydrate/ROADMAP.md (Section 1: Scheduled Roadmap Items) to [x], logging the total iteration-pass count.',
+      'Appends a completion entry to .hydrate/PROJECT_JOURNAL.md.',
       'Archives the finished canvas to .hydrate/archive/<UOW-id>.md.',
       'Resets .hydrate/CURRENT_UOW.md to the templated "All UOWs are complete" placeholder, ready for the next hydrate prompt.',
       'Prints a recommended `git commit` command summarizing the completed UOW.'
@@ -94,8 +94,8 @@ function printGlobalHelp() {
   console.log('  $ hydrate <command> [flags]');
   console.log('');
 
-  console.log(bold(yellow('💧 THE 3-ARTIFACT WORKFLOW (1-2-3)')));
-  console.log(`  1. ${green('hydrate init')}       Scaffold CLAUDE.md, .hydrate/CURRENT_UOW.md, docs/SYSTEM.md`);
+  console.log(bold(yellow('💧 THE HYDRATE WORKFLOW (1-2-3)')));
+  console.log(`  1. ${green('hydrate init')}       Scaffold CLAUDE.md & the .hydrate/ journal files`);
   console.log(`  2. ${green('hydrate prompt')}     Load the active UOW into .hydrate/CURRENT_UOW.md`);
   console.log(`  3. ${green('hydrate complete')}   Close out the UOW when every task is checked off`);
   console.log(dim('  Use ') + green('hydrate clip') + dim(' any time to copy the active UOW payload to your clipboard.'));

@@ -41,3 +41,14 @@
 ### UOW-02 — completed 2026-08-28
 - Iterations logged: 0
 - Suggested commit: `feat: complete UOW-02`
+
+### UOW-HYDRATE-01 — completed 2026-08-31
+**Scaffold Engine & Template Migration to `.hydrate/` Journal Architecture**
+
+- Migrated `hydrate init` off the legacy 3-artifact scaffold (`CLAUDE.md`, `.hydrate/CURRENT_UOW.md`, `docs/SYSTEM.md`) onto the 6-artifact layout: `CLAUDE.md` plus `.hydrate/{CURRENT_UOW,ROADMAP,PROJECT_JOURNAL,DEV_JOURNAL,ARCHITECT_JOURNAL}.md` and `.hydrate/archive/`.
+- Added `templates/.hydrate/{CURRENT_UOW,ROADMAP,PROJECT_JOURNAL,DEV_JOURNAL,ARCHITECT_JOURNAL}.md.template`; removed the stray non-`.template`-suffixed files that `loadTemplate()` could never have resolved (`templates/{ARCHITECT_JOURNAL,DEV_JOURNAL,PROJECT_JOURNAL,ROADMAP}.md`) and the now-missing `templates/SYSTEM.md.template` dependency that was crashing `scaffold()`.
+- Rewrote `src/init.js`'s `scaffold()` to render the 5 `.hydrate/` templates via a small `{name, label}` table instead of one-off blocks; still idempotent (skips any file that already exists) and returns only the files it actually created.
+- Rewired `bin/cli.js`'s `prompt`/`complete` commands off `docs/SYSTEM.md` onto the new journal files: `findNextPendingUow()` now scans `.hydrate/ROADMAP.md`'s "## Section 1: Scheduled Roadmap Items" instead of `docs/SYSTEM.md`'s "## 2."; `hydrate complete` now flips the matching bullet in `.hydrate/ROADMAP.md` and appends the completion entry to `.hydrate/PROJECT_JOURNAL.md` instead of `docs/SYSTEM.md` Section 4. `docs/`/`docs/SYSTEM.md` are no longer created or referenced by bootstrap.
+- Updated `src/help.js` command summaries/workflow banner and `test/{init,prompt,complete,cli}.test.js` to match — `cli.test.js`'s stale `doesNotMatch(/ROADMAP\.md/)` assertion (a leftover from pruning v1's root-level `ROADMAP.md`) was removed since `.hydrate/ROADMAP.md` is now an intentional v2 artifact.
+- Verified end-to-end by hand in a scratch dir: `init` → edit `.hydrate/ROADMAP.md` → `prompt` (pulls the pending UOW, writes the fingerprinted payload) → `complete` (marks the roadmap bullet `[x]`, appends to `PROJECT_JOURNAL.md`, archives the canvas).
+- Test suite: 48/48 passing. Coverage: `src/init.js` 100% line/branch; `bin/cli.js` 93.48% line / 73.81% branch; `src/help.js` 93.99% line / 72.00% branch — all new branches added by this UOW are covered; the uncovered lines are pre-existing edge cases (malformed `package.json`, `--chunk-size` parsing, non-chunked architect payload path) outside this UOW's surgical scope.
