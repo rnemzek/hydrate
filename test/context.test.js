@@ -6,7 +6,13 @@ const os = require('node:os');
 const path = require('node:path');
 
 const CLI_PATH = path.join(__dirname, '..', 'bin', 'cli.js');
-const { buildContext, extractRecentArchitectEntries, extractActiveEpics } = require('../src/commands/context');
+const {
+  buildContext,
+  extractRecentArchitectEntries,
+  extractActiveEpics,
+  extractArchiveTitles,
+  extractProjectJournalEntries
+} = require('../src/commands/context');
 
 function makeTempDir(prefix) {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -97,6 +103,54 @@ test('extractActiveEpics() falls back to the full trimmed text when no "## Secti
   assert.equal(extractActiveEpics(text), text.trim());
 });
 
+// extractArchiveTitles() ------------------------------------------------------
+
+test('extractArchiveTitles() returns [] when .hydrate/archive/ does not exist', () => {
+  const dir = makeTempDir('hydrate-archive-titles-missing-');
+  try {
+    assert.deepEqual(extractArchiveTitles(dir, 3), []);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('extractArchiveTitles() returns the tail `depth` archived UOW titles, most-recent-last', () => {
+  const dir = makeTempDir('hydrate-archive-titles-');
+  try {
+    const archiveDir = path.join(dir, '.hydrate', 'archive');
+    fs.mkdirSync(archiveDir, { recursive: true });
+    fs.writeFileSync(path.join(archiveDir, 'UOW-01.md'), '# UOW-01: First\n\nbody\n');
+    fs.writeFileSync(path.join(archiveDir, 'UOW-02.md'), '# UOW-02: Second\n\nbody\n');
+    fs.writeFileSync(path.join(archiveDir, 'UOW-03.md'), '# UOW-03: Third\n\nbody\n');
+
+    const titles = extractArchiveTitles(dir, 2);
+    assert.deepEqual(titles, ['UOW-02: Second', 'UOW-03: Third']);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// extractProjectJournalEntries() -----------------------------------------------
+
+test('extractProjectJournalEntries() returns [] for null/empty input', () => {
+  assert.deepEqual(extractProjectJournalEntries(null, 3), []);
+  assert.deepEqual(extractProjectJournalEntries('', 3), []);
+});
+
+test('extractProjectJournalEntries() returns the tail `depth` checklist lines', () => {
+  const text = [
+    '# Project Plan Journal',
+    '',
+    '- [x] **[UOW-01]** First — 2026-09-01 | Pass: 1/1 tests',
+    '- [x] **[UOW-02]** Second — 2026-09-01 | Pass: 2/2 tests',
+    '- [x] **[UOW-03]** Third — 2026-09-01 | Pass: 3/3 tests'
+  ].join('\n');
+  const entries = extractProjectJournalEntries(text, 2);
+  assert.equal(entries.length, 2);
+  assert.match(entries[0], /UOW-02/);
+  assert.match(entries[1], /UOW-03/);
+});
+
 // buildContext() --------------------------------------------------------------
 
 test('buildContext() reports fallback notices when .hydrate/ is empty', () => {
@@ -138,6 +192,68 @@ test('buildContext() compiles the header, active scope, architectural context an
     assert.match(text, /UOW-04 — completed/);
     assert.match(text, /UOW-99: Next thing/);
     assert.doesNotMatch(text, /Section 2/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('buildContext() includes CLAUDE.md and docs/ARCHITECTURE.md sections when present', () => {
+  const dir = makeTempDir('hydrate-context-rules-');
+  try {
+    fs.writeFileSync(path.join(dir, 'CLAUDE.md'), '# Rules\n- Be surgical.\n');
+    fs.mkdirSync(path.join(dir, 'docs'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'docs', 'ARCHITECTURE.md'), '## 1. Overall System Architecture\ngraph goes here\n');
+
+    const text = buildContext(dir, { depth: 3 });
+
+    assert.match(text, /## Project Guidelines \(CLAUDE\.md\)/);
+    assert.match(text, /Be surgical\./);
+    assert.match(text, /## Overall Architecture \(docs\/ARCHITECTURE\.md\)/);
+    assert.match(text, /graph goes here/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('buildContext() omits CLAUDE.md and docs/ARCHITECTURE.md sections when absent', () => {
+  const dir = makeTempDir('hydrate-context-norules-');
+  try {
+    const text = buildContext(dir, { depth: 3 });
+
+    assert.doesNotMatch(text, /## Project Guidelines/);
+    assert.doesNotMatch(text, /## Overall Architecture/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('buildContext() falls back to .hydrate/archive/*.md titles when ARCHITECT_JOURNAL.md has no entries', () => {
+  const dir = makeTempDir('hydrate-context-archive-fallback-');
+  try {
+    const archiveDir = path.join(dir, '.hydrate', 'archive');
+    fs.mkdirSync(archiveDir, { recursive: true });
+    fs.writeFileSync(path.join(archiveDir, 'UOW-01.md'), '# UOW-01: First\n\nbody\n');
+    fs.writeFileSync(path.join(archiveDir, 'UOW-02.md'), '# UOW-02: Second\n\nbody\n');
+    // PROJECT_JOURNAL.md is also present, but archive titles should win.
+    writeHydrateFile(dir, 'PROJECT_JOURNAL.md', '- [x] **[UOW-99]** Should not appear — 2026-09-01 | Pass: 1/1 tests\n');
+
+    const text = buildContext(dir, { depth: 1 });
+
+    assert.match(text, /UOW-02: Second/);
+    assert.doesNotMatch(text, /Should not appear/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('buildContext() falls back to PROJECT_JOURNAL.md entries when ARCHITECT_JOURNAL.md and archive/ are both empty', () => {
+  const dir = makeTempDir('hydrate-context-journal-fallback-');
+  try {
+    writeHydrateFile(dir, 'PROJECT_JOURNAL.md', '- [x] **[UOW-42]** Fixture — 2026-09-01 | Pass: 5/5 tests\n');
+
+    const text = buildContext(dir, { depth: 3 });
+
+    assert.match(text, /UOW-42.*Fixture/);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

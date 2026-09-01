@@ -66,6 +66,40 @@ function extractActiveEpics(text) {
   return sectionLines.join('\n').trim();
 }
 
+// Fallback for when ARCHITECT_JOURNAL.md has no "### " entries: pulls the
+// title line (the leading "# " heading) out of the tail `depth` archived
+// UOW payloads in .hydrate/archive/, most-recent-last (archive filenames
+// sort chronologically, e.g. UOW-HYDRATE-11.md after UOW-HYDRATE-09.md).
+function extractArchiveTitles(cwd, depth) {
+  if (depth <= 0) return [];
+  const archiveDir = path.join(cwd, '.hydrate', 'archive');
+
+  let files;
+  try {
+    files = fs.readdirSync(archiveDir).filter((name) => name.endsWith('.md')).sort();
+  } catch {
+    return [];
+  }
+
+  const titles = [];
+  for (const file of files.slice(-depth)) {
+    const content = readIfExists(path.join(archiveDir, file));
+    if (!content) continue;
+    const firstLine = content.split('\n')[0].trim();
+    titles.push(firstLine.replace(/^#+\s*/, ''));
+  }
+  return titles;
+}
+
+// Second-tier fallback: pulls the tail `depth` checklist lines out of
+// PROJECT_JOURNAL.md (see the "- [x] **[UOW-XX]** Title — date" format
+// mandated by CLAUDE.md's Completion Logging Protocol).
+function extractProjectJournalEntries(text, depth) {
+  if (!text || depth <= 0) return [];
+  const entries = text.split('\n').filter((line) => /^-\s*\[x\]/i.test(line.trim()));
+  return entries.slice(-depth);
+}
+
 // Compiles a token-dense, zero-fluff context payload from the .hydrate/
 // journal artifacts, suitable for seeding a fresh AI LLM prompt session.
 // Pure function of disk state — `hydrate context`'s CLI handler owns
@@ -75,19 +109,40 @@ function buildContext(cwd, { depth = DEFAULT_DEPTH } = {}) {
   const currentUowText = readIfExists(path.join(hydrateDir, 'CURRENT_UOW.md'));
   const architectJournalText = readIfExists(path.join(hydrateDir, 'ARCHITECT_JOURNAL.md'));
   const roadmapText = readIfExists(path.join(hydrateDir, 'ROADMAP.md'));
+  const projectJournalText = readIfExists(path.join(hydrateDir, 'PROJECT_JOURNAL.md'));
+  const claudeMdText = readIfExists(path.join(cwd, 'CLAUDE.md'));
+  const architectureMdText = readIfExists(path.join(cwd, 'docs', 'ARCHITECTURE.md'));
 
   const activeScope = currentUowText && currentUowText.trim()
     ? currentUowText.trim()
     : 'No active UOW assigned. Run `hydrate prompt` to load one.';
 
+  let architecturalContext;
   const architectEntries = extractRecentArchitectEntries(architectJournalText, depth);
-  const architecturalContext = architectEntries.length
-    ? architectEntries.join('\n\n')
-    : 'No architectural journal entries found.';
+  if (architectEntries.length) {
+    architecturalContext = architectEntries.join('\n\n');
+  } else {
+    const archiveTitles = extractArchiveTitles(cwd, depth);
+    const journalEntries = extractProjectJournalEntries(projectJournalText, depth);
+    if (archiveTitles.length) {
+      architecturalContext = archiveTitles.join('\n');
+    } else if (journalEntries.length) {
+      architecturalContext = journalEntries.join('\n');
+    } else {
+      architecturalContext = 'No architectural journal entries found.';
+    }
+  }
 
   const activeEpics = roadmapText !== null
     ? (extractActiveEpics(roadmapText) || 'No active epics found in .hydrate/ROADMAP.md.')
     : 'No .hydrate/ROADMAP.md found.';
+
+  const guidelinesSection = claudeMdText
+    ? `\n## Project Guidelines (CLAUDE.md)\n${claudeMdText.trim()}\n`
+    : '';
+  const architectureSection = architectureMdText
+    ? `\n## Overall Architecture (docs/ARCHITECTURE.md)\n${architectureMdText.trim()}\n`
+    : '';
 
   return `# HYDRATE CONTEXT COMPILATION
 Project: ${getProjectName(cwd)}
@@ -101,7 +156,13 @@ ${architecturalContext}
 
 ## Macro Roadmap (.hydrate/ROADMAP.md — Active Epics)
 ${activeEpics}
-`;
+${guidelinesSection}${architectureSection}`;
 }
 
-module.exports = { buildContext, extractRecentArchitectEntries, extractActiveEpics };
+module.exports = {
+  buildContext,
+  extractRecentArchitectEntries,
+  extractActiveEpics,
+  extractArchiveTitles,
+  extractProjectJournalEntries
+};

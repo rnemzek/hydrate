@@ -12,3 +12,4 @@
 - [x] **[UOW-HYDRATE-09]** Add Triad Workflow Guide (`hydrate help` / `/hydrate-help`) — 2026-09-01 | Pass: 182/182 tests
 - [x] **[UOW-HYDRATE-10]** Zero-Touch Auto-Provisioning & Unified `/hydrate` Interface — 2026-09-01 | Pass: 211/211 tests
 - [x] **[UOW-HYDRATE-11]** System Architecture Maintenance & Decision Logging Protocol — 2026-09-01 | Pass: 211/211 tests
+- [x] **[UOW-HYDRATE-12]** Enrich Context Compiler with System Architecture & Rule Artifacts — 2026-09-01 | Pass: 219/219 tests

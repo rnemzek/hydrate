@@ -56,4 +56,17 @@ sequenceDiagram
 * **Command Dispatch Case Sensitivity**: CLI routing uses exact string matching for speed and safety. Alias routes (like `lfg`) are intercepted in isolated pre-dispatch logic to prevent unintended globally case-insensitive command behaviors.
 * **Scaffold Boundary Rules**: Standard onboarding tools (`checkup`, `ingest`, `context`, `help`) are provisioned automatically via `src/init.js`. Easter-egg or experimental commands are withheld from the default auto-scaffold list to keep default repo footprints minimal.
 
+---
+
+## /hydrate command flow
+
+Terminal                        Claude Code                        Architect Chat
+────────                        ───────────                        ──────────────
+cd carboyz -> claude  ───>  Run /hydrate  ─────── (Cmd+V / Paste) ───────> Paste Context
+                                   │
+                    ┌──────────────┴──────────────┐
+                    ▼                             ▼
+         [Hydrates CC Context]        [Copies Architect Context
+                                         to OS Clipboard]
+
 
