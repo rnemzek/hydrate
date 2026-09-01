@@ -19,7 +19,8 @@ const HYDRATE_ARTIFACTS = [
 const CLAUDE_COMMANDS = [
   { name: 'hydrate-checkup.md', label: 'Created .claude/commands/hydrate-checkup.md (/hydrate-checkup slash command)' },
   { name: 'hydrate-ingest.md', label: 'Created .claude/commands/hydrate-ingest.md (/hydrate-ingest slash command)' },
-  { name: 'hydrate-context.md', label: 'Created .claude/commands/hydrate-context.md (/hydrate-context slash command)' }
+  { name: 'hydrate-context.md', label: 'Created .claude/commands/hydrate-context.md (/hydrate-context slash command)' },
+  { name: 'hydrate-help.md', label: 'Created .claude/commands/hydrate-help.md (/hydrate-help slash command)' }
 ];
 
 // Idempotently writes the canonical hydrate scaffold — CLAUDE.md plus the
@@ -86,7 +87,7 @@ function runInit() {
 1. Review CLAUDE.md and set your exact stack/quality gates.
 2. Define your task index & roadmap in .hydrate/ROADMAP.md (Section 1).
 3. Run 'hydrate prompt' to lock Claude Code onto the active UOW.
-4. Use /hydrate-checkup, /hydrate-ingest, /hydrate-context in Claude Code for zero-touch interaction.
+4. Use /hydrate-checkup, /hydrate-ingest, /hydrate-context, /hydrate-help in Claude Code for zero-touch interaction.
 `);
 }
 

@@ -29,5 +29,25 @@ test('hydrate lfg --help prints command help without exiting via the ingest flow
 test('hydrate --help does not list the lfg easter egg in the visible command table', () => {
   const result = runCli(['--help']);
   assert.equal(result.status, 0);
-  assert.doesNotMatch(result.stdout, /\blfg\b/i);
+  const commandsSection = result.stdout.split('COMMANDS')[1].split('GLOBAL FLAGS')[0];
+  assert.doesNotMatch(commandsSection, /\blfg\b/i);
+});
+
+test('hydrate help prints the Triad Workflow Guide banner and 6-step boot sequence', () => {
+  const result = runCli(['help']);
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /HYDRATE ENGINE — TRIAD WORKFLOW GUIDE/);
+  assert.match(result.stdout, /claude --dangerously-skip-permissions/);
+  assert.match(result.stdout, /hydrate init/);
+  assert.match(result.stdout, /\/hydrate-context/);
+  assert.match(result.stdout, /AI Architect/);
+  assert.match(result.stdout, /\/hydrate-lfg/);
+});
+
+test('hydrate --help and hydrate -h also print the Triad Workflow Guide banner', () => {
+  for (const flag of ['--help', '-h']) {
+    const result = runCli([flag]);
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /HYDRATE ENGINE — TRIAD WORKFLOW GUIDE/);
+  }
 });

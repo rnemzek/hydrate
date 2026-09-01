@@ -9,3 +9,4 @@
 - [x] **[UOW-HYDRATE-06]** Implement Clipboard Ingress Engine & Interactive Prompting (`hydrate ingest`) — 2026-09-01 | Pass: 161/161 tests
 - [x] **[UOW-HYDRATE-07]** Implement Claude Code Boot Hooks & Slash Command Definitions — 2026-09-01 | Pass: 171/171 tests
 - [x] **[UOW-HYDRATE-08]** Add `hydrate lfg` Easter Egg Alias for Zero-Touch Session Launch — 2026-09-01 | Pass: 180/180 tests
+- [x] **[UOW-HYDRATE-09]** Add Triad Workflow Guide (`hydrate help` / `/hydrate-help`) — 2026-09-01 | Pass: 182/182 tests

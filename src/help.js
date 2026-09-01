@@ -206,6 +206,23 @@ function printGlobalHelp() {
   console.log(dim('  Use ') + green('hydrate clip') + dim(' any time to copy the active UOW payload to your clipboard.'));
   console.log('');
 
+  console.log(bold(yellow('⚙️  HYDRATE ENGINE — TRIAD WORKFLOW GUIDE')));
+  console.log(dim('  Boot sequence for starting a fresh context across the triad:'));
+  console.log(dim('  Product Owner (you) · Lead Architect (Gemini) · Lead Developer (Claude Code).'));
+  console.log(`  1. Launch Claude Code in yolo mode (auto-approve edits/commands).`);
+  console.log(`     ${green('$ claude --dangerously-skip-permissions')}`);
+  console.log(`  2. Scaffold or refresh the harness in the target repo.`);
+  console.log(`     ${green('$ hydrate init')}`);
+  console.log(`  3. Extract a token-dense context payload for the Lead Architect.`);
+  console.log(`     ${green('/hydrate-context')}  ${dim('(or: hydrate context --clip)')}`);
+  console.log(`  4. Paste that payload into the AI Architect (Gemini) chat and`);
+  console.log(`     have it generate the next UOW spec.`);
+  console.log(`  5. Copy the AI Architect's generated UOW spec to your OS clipboard.`);
+  console.log(`  6. Fire the zero-touch launch in Claude Code to reconcile state`);
+  console.log(`     and ingest the clipboard payload in one shot.`);
+  console.log(`     ${green('/hydrate-lfg')}  ${dim('(or: hydrate lfg --yes)')}`);
+  console.log('');
+
   console.log(bold('COMMANDS'));
   const visibleCommands = Object.entries(COMMANDS).filter(([, meta]) => !meta.hidden);
   const commandWidth = Math.max(...visibleCommands.map(([name]) => name.length));
