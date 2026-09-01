@@ -77,6 +77,29 @@ const COMMANDS = {
       ['--depth <n>', 'Number of recent .hydrate/ARCHITECT_JOURNAL.md entries to include (default: 3).']
     ],
     examples: ['hydrate context', 'hydrate context --clip', 'hydrate context --depth 5']
+  },
+  'export-portfolio': {
+    summary: 'Export a structured tech-overview.json from .hydrate/ journals, package.json, and ROADMAP.md.',
+    usage: 'hydrate export-portfolio [--out <path>|-o <path>] [--stdout]',
+    whenToRun: 'Any time you need a portfolio/showcase-ready JSON snapshot of this project\'s overview, architecture, stack, and roadmap.',
+    whatItDoes: [
+      'overview: project name/description from package.json, total completed UOW count and latest milestone from .hydrate/PROJECT_JOURNAL.md.',
+      'architecture: structured decision-log entries parsed from .hydrate/ARCHITECT_JOURNAL.md.',
+      'stack: runtime/dependency taxonomy extracted from package.json.',
+      'roadmap: { scheduled, backlog } arrays parsed from .hydrate/ROADMAP.md\'s "## Section 1" and "## Section 2".',
+      'Writes the JSON payload to --out (default: ./tech-overview.json), or streams it to stdout with --stdout instead of writing a file.'
+    ],
+    options: [
+      ['-o, --out <path>', 'Output file path for the exported JSON (default: ./tech-overview.json).'],
+      ['--stdout', 'Stream the JSON payload to stdout instead of writing a file.']
+    ],
+    examples: ['hydrate export-portfolio', 'hydrate export-portfolio --out ./dist/tech-overview.json', 'hydrate export-portfolio --stdout']
+  },
+  export: {
+    summary: 'Alias for hydrate export-portfolio.',
+    usage: 'hydrate export [--out <path>|-o <path>] [--stdout]',
+    options: [],
+    hidden: true
   }
 };
 
@@ -149,6 +172,7 @@ function printGlobalHelp() {
   console.log('  $ hydrate clip');
   console.log('  $ hydrate check');
   console.log('  $ hydrate context --clip');
+  console.log('  $ hydrate export-portfolio --out ./tech-overview.json');
   console.log('  $ hydrate complete --force');
   console.log('  $ hydrate <command> --help');
   console.log('  $ hydrate --version');

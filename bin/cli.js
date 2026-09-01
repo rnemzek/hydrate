@@ -8,6 +8,7 @@ const { copyToClipboard } = require('../src/clipboard');
 const { loadTemplate } = require('../src/templates');
 const { runCheck, formatReport } = require('../src/commands/check');
 const { buildContext } = require('../src/commands/context');
+const { buildPortfolio } = require('../src/commands/export-portfolio');
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -51,6 +52,11 @@ switch (command) {
 
   case 'context':
     handleContext(rest);
+    break;
+
+  case 'export-portfolio':
+  case 'export':
+    handleExportPortfolio(rest);
     break;
 
   default:
@@ -360,6 +366,36 @@ function handleContext(options = []) {
   console.log(payload);
 
   if (shouldCopy) copyWithFeedback(payload, { printFallback: false });
+}
+
+function handleExportPortfolio(options = []) {
+  const { cwd } = getPaths();
+  const toStdout = options.includes('--stdout');
+
+  let outPath = './tech-overview.json';
+  const outFlagIndex = options.findIndex((arg) => arg === '--out' || arg === '-o');
+  if (outFlagIndex !== -1 && options[outFlagIndex + 1] !== undefined) {
+    outPath = options[outFlagIndex + 1];
+  }
+  const outEqArg = options.find((arg) => arg.startsWith('--out='));
+  if (outEqArg) outPath = outEqArg.split('=')[1];
+
+  const portfolio = buildPortfolio(cwd);
+  const json = JSON.stringify(portfolio, null, 2);
+
+  if (toStdout) {
+    console.log(json);
+    return;
+  }
+
+  const resolvedOutPath = path.resolve(cwd, outPath);
+  fs.mkdirSync(path.dirname(resolvedOutPath), { recursive: true });
+  fs.writeFileSync(resolvedOutPath, `${json}\n`, 'utf8');
+
+  console.log(`
+💧 Portfolio Overview Exported!
+  ✔ Wrote ${path.relative(cwd, resolvedOutPath)}
+`);
 }
 
 function outputChunkedArchitectPayload(payload, chunkSize) {
