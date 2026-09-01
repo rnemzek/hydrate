@@ -21,7 +21,8 @@ function withTempDir(fn) {
 }
 
 const HYDRATE_FILES = ['CURRENT_UOW.md', 'ROADMAP.md', 'PROJECT_JOURNAL.md', 'DEV_JOURNAL.md', 'ARCHITECT_JOURNAL.md'];
-const CLAUDE_COMMAND_FILES = ['hydrate.md', 'hydrate-checkup.md', 'hydrate-ingest.md', 'hydrate-context.md', 'hydrate-help.md', 'hydrate-uow.md', 'hydrate-artifacts.md'];
+const CLAUDE_COMMAND_FILES = ['hydrate.md', 'hydrate-checkup.md', 'hydrate-ingest.md', 'hydrate-context.md', 'hydrate-help.md', 'hydrate-uow.md', 'hydrate-artifacts.md', 'hydrate-arch-sync.md', 'hydrate-digest.md'];
+const DOCS_FILES = ['ARCHITECTURE.md', 'ARCHITECTURE_JOURNAL.md'];
 
 // src/templates.js -------------------------------------------------------
 
@@ -44,11 +45,11 @@ test('renderTemplate() leaves unmatched placeholders untouched', () => {
 
 // scaffold() ---------------------------------------------------------------
 
-test('scaffold() creates CLAUDE.md, the 5-artifact .hydrate/ layout, .hydrate/archive/, and the /hydrate-* slash commands', () => {
+test('scaffold() creates CLAUDE.md, the 5-artifact .hydrate/ layout, .hydrate/archive/, the /hydrate-* slash commands, and the docs/ architecture layout', () => {
   withTempDir((dir) => {
     const created = scaffold(dir);
 
-    assert.equal(created.length, 13);
+    assert.equal(created.length, 17);
     assert.ok(fs.existsSync(path.join(dir, 'CLAUDE.md')));
     assert.ok(fs.existsSync(path.join(dir, '.hydrate', 'archive')));
     for (const file of HYDRATE_FILES) {
@@ -56,6 +57,9 @@ test('scaffold() creates CLAUDE.md, the 5-artifact .hydrate/ layout, .hydrate/ar
     }
     for (const file of CLAUDE_COMMAND_FILES) {
       assert.ok(fs.existsSync(path.join(dir, '.claude', 'commands', file)), `expected .claude/commands/${file} to exist`);
+    }
+    for (const file of DOCS_FILES) {
+      assert.ok(fs.existsSync(path.join(dir, 'docs', file)), `expected docs/${file} to exist`);
     }
 
     const claude = fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8');
@@ -72,6 +76,13 @@ test('scaffold() creates CLAUDE.md, the 5-artifact .hydrate/ layout, .hydrate/ar
 
     const projectJournal = fs.readFileSync(path.join(dir, '.hydrate', 'PROJECT_JOURNAL.md'), 'utf8');
     assert.match(projectJournal, new RegExp(`# ${path.basename(dir)} Project Journal`));
+
+    const architecture = fs.readFileSync(path.join(dir, 'docs', 'ARCHITECTURE.md'), 'utf8');
+    assert.match(architecture, /## 1\. Overall System Architecture/);
+    assert.match(architecture, /## 2\. Technology Stack & Dependencies/);
+
+    const architectureJournal = fs.readFileSync(path.join(dir, 'docs', 'ARCHITECTURE_JOURNAL.md'), 'utf8');
+    assert.match(architectureJournal, /# Architecture Journal/);
   });
 });
 
@@ -99,13 +110,16 @@ test('scaffold() only creates the files that are missing', () => {
 
     const created = scaffold(dir);
 
-    assert.equal(created.length, 12);
+    assert.equal(created.length, 16);
     assert.ok(!created.some((c) => c.path.endsWith('CLAUDE.md')));
     for (const file of HYDRATE_FILES) {
       assert.ok(fs.existsSync(path.join(dir, '.hydrate', file)));
     }
     for (const file of CLAUDE_COMMAND_FILES) {
       assert.ok(fs.existsSync(path.join(dir, '.claude', 'commands', file)));
+    }
+    for (const file of DOCS_FILES) {
+      assert.ok(fs.existsSync(path.join(dir, 'docs', file)));
     }
   });
 });
@@ -153,6 +167,10 @@ test('runInit() prints a checklist of created files and next steps', () => {
     assert.match(output, /Created \.claude\/commands\/hydrate-help\.md/);
     assert.match(output, /Created \.claude\/commands\/hydrate-uow\.md/);
     assert.match(output, /Created \.claude\/commands\/hydrate-artifacts\.md/);
+    assert.match(output, /Created \.claude\/commands\/hydrate-arch-sync\.md/);
+    assert.match(output, /Created \.claude\/commands\/hydrate-digest\.md/);
+    assert.match(output, /Created docs\/ARCHITECTURE\.md/);
+    assert.match(output, /Created docs\/ARCHITECTURE_JOURNAL\.md/);
     assert.match(output, /hydrate-checkup/);
     assert.match(output, /hydrate-help/);
     assert.match(output, /Harness Initialized/);
