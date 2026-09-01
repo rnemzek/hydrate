@@ -54,5 +54,5 @@
 - When executing plan mode for a validated UOW, proceed immediately with implementation and verification without holding for secondary plan approvals if the spec in `.hydrate/CURRENT_UOW.md` fully defines the acceptance criteria.
 
 ### 5.4 Autonomous Fast-Start Triggers
-- When prompted with **"Andiamo"**, **"Vámonos"**, **"Vamos"**, **"Allons-y"**, **"Lass uns gehen"**, **"Make it so"**, or **"Execute active UOW"**, immediately parse `.hydrate/CURRENT_UOW.md`, begin implementation, verify via `npm test`, log completions to `.hydrate/*_JOURNAL.md` files, and commit upon clean test pass without requesting intermediate setup approvals.
+- When prompted with **"Andiamo"**, **"Vámonos"**, **"Vamos"**, **"Allons-y"**, **"Lass uns gehen"**, **"Lets go"**, **"Execute"**, **"Make it so"**, or **"Execute active UOW"**, immediately parse `.hydrate/CURRENT_UOW.md`, begin implementation, verify via `npm test`, log completions to `.hydrate/*_JOURNAL.md` files, and commit upon clean test pass without requesting intermediate setup approvals.
 
