@@ -35,4 +35,38 @@ function copyToClipboard(text, { platform = process.platform, spawn = spawnSync 
   return false;
 }
 
-module.exports = { copyToClipboard, candidatesForPlatform };
+// Mirrors candidatesForPlatform() but for *reading* the clipboard — `clip`
+// on win32 is copy-only, so paste there shells out to PowerShell instead.
+function pasteCandidatesForPlatform(platform = process.platform) {
+  switch (platform) {
+    case 'darwin':
+      return [{ cmd: 'pbpaste', args: [] }];
+    case 'win32':
+      return [{ cmd: 'powershell', args: ['-NoProfile', '-Command', 'Get-Clipboard'] }];
+    case 'linux':
+      return [
+        { cmd: 'xclip', args: ['-selection', 'clipboard', '-o'] },
+        { cmd: 'xsel', args: ['--clipboard', '--output'] }
+      ];
+    default:
+      return [];
+  }
+}
+
+// Returns the clipboard text on success, or null if no clipboard tool was
+// found/usable — callers are expected to surface that as a diagnostic
+// rather than treating an empty clipboard the same as "no tool available".
+function readFromClipboard({ platform = process.platform, spawn = spawnSync } = {}) {
+  const candidates = pasteCandidatesForPlatform(platform);
+
+  for (const { cmd, args } of candidates) {
+    const result = spawn(cmd, args, { encoding: 'utf8' });
+    if (result && !result.error && result.status === 0 && typeof result.stdout === 'string') {
+      return result.stdout;
+    }
+  }
+
+  return null;
+}
+
+module.exports = { copyToClipboard, candidatesForPlatform, readFromClipboard, pasteCandidatesForPlatform };

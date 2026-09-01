@@ -6,3 +6,4 @@
 - [x] **[UOW-HYDRATE-03]** Implement High-Density Context Compiler (`hydrate context`) — 2026-09-01 | Pass: 85/85 tests
 - [x] **[UOW-HYDRATE-04]** Implement Static Portfolio Overview Exporter (`hydrate export-portfolio`) — 2026-09-01 | Pass: 112/112 tests
 - [x] **[UOW-HYDRATE-05]** Implement Smart State Machine & Session Reconciler (`hydrate checkup`) — 2026-09-01 | Pass: 126/126 tests
+- [x] **[UOW-HYDRATE-06]** Implement Clipboard Ingress Engine & Interactive Prompting (`hydrate ingest`) — 2026-09-01 | Pass: 161/161 tests

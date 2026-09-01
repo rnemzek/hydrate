@@ -10,6 +10,7 @@ const { runCheck, formatReport } = require('../src/commands/check');
 const { runCheckup, formatCheckupReport } = require('../src/commands/checkup');
 const { buildContext } = require('../src/commands/context');
 const { buildPortfolio } = require('../src/commands/export-portfolio');
+const { runIngest } = require('../src/commands/ingest');
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -63,6 +64,11 @@ switch (command) {
   case 'export-portfolio':
   case 'export':
     handleExportPortfolio(rest);
+    break;
+
+  case 'ingest':
+  case 'paste':
+    handleIngest(rest);
     break;
 
   default:
@@ -409,6 +415,20 @@ function handleExportPortfolio(options = []) {
 💧 Portfolio Overview Exported!
   ✔ Wrote ${path.relative(cwd, resolvedOutPath)}
 `);
+}
+
+function handleIngest(options = []) {
+  const { cwd } = getPaths();
+  const yes = options.includes('--yes') || options.includes('-y');
+
+  runIngest(cwd, { yes })
+    .then((result) => {
+      process.exit(result.code);
+    })
+    .catch((err) => {
+      console.error(`❌ Error: ${err.message}`);
+      process.exit(1);
+    });
 }
 
 function outputChunkedArchitectPayload(payload, chunkSize) {

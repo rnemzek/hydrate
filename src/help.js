@@ -118,6 +118,27 @@ const COMMANDS = {
     usage: 'hydrate export [--out <path>|-o <path>] [--stdout]',
     options: [],
     hidden: true
+  },
+  ingest: {
+    summary: 'Interactively ingest a clipboard UOW payload into .hydrate/CURRENT_UOW.md.',
+    usage: 'hydrate ingest [--yes|-y]',
+    whenToRun: 'When the AI Architect (Gemini) has generated a new UOW spec and copied it to your clipboard.',
+    whatItDoes: [
+      'Reads the OS clipboard and validates it looks like a UOW spec (a "# UOW-..." header plus a Goal & Context / Surgical Scope / Acceptance Criteria section).',
+      'Rejects invalid clipboard content with a diagnostic and leaves .hydrate/CURRENT_UOW.md untouched.',
+      'Renders the ⚙️ HYDRATE ENGINE banner; if .hydrate/CURRENT_UOW.md already has active/uncompleted work, offers to archive-and-swap, overwrite, or hand off to chat instead.',
+      'With --yes, applies non-interactively: archives any active UOW first, then writes the clipboard payload straight to .hydrate/CURRENT_UOW.md.'
+    ],
+    options: [
+      ['-y, --yes', 'Skip the interactive prompt — archive any active UOW and apply the clipboard payload directly.']
+    ],
+    examples: ['hydrate ingest', 'hydrate ingest --yes']
+  },
+  paste: {
+    summary: 'Alias for hydrate ingest.',
+    usage: 'hydrate paste [--yes|-y]',
+    options: [],
+    hidden: true
   }
 };
 
@@ -192,6 +213,7 @@ function printGlobalHelp() {
   console.log('  $ hydrate checkup');
   console.log('  $ hydrate context --clip');
   console.log('  $ hydrate export-portfolio --out ./tech-overview.json');
+  console.log('  $ hydrate ingest');
   console.log('  $ hydrate complete --force');
   console.log('  $ hydrate <command> --help');
   console.log('  $ hydrate --version');

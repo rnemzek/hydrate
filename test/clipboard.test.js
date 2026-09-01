@@ -6,7 +6,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const CLI_PATH = path.join(__dirname, '..', 'bin', 'cli.js');
-const { copyToClipboard, candidatesForPlatform } = require('../src/clipboard');
+const { copyToClipboard, candidatesForPlatform, readFromClipboard, pasteCandidatesForPlatform } = require('../src/clipboard');
 
 function makeTempDir(prefix) {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -100,6 +100,73 @@ test('copyToClipboard() returns false on a platform with no known clipboard tool
   const fakeSpawn = () => ({ status: 0, error: null });
   const result = copyToClipboard('payload', { platform: 'freebsd', spawn: fakeSpawn });
   assert.equal(result, false);
+});
+
+// pasteCandidatesForPlatform() -----------------------------------------------
+
+test('pasteCandidatesForPlatform() returns pbpaste on darwin', () => {
+  assert.deepEqual(pasteCandidatesForPlatform('darwin'), [{ cmd: 'pbpaste', args: [] }]);
+});
+
+test('pasteCandidatesForPlatform() shells out to PowerShell Get-Clipboard on win32', () => {
+  assert.deepEqual(pasteCandidatesForPlatform('win32'), [
+    { cmd: 'powershell', args: ['-NoProfile', '-Command', 'Get-Clipboard'] }
+  ]);
+});
+
+test('pasteCandidatesForPlatform() tries xclip before xsel on linux', () => {
+  const candidates = pasteCandidatesForPlatform('linux');
+  assert.equal(candidates[0].cmd, 'xclip');
+  assert.equal(candidates[1].cmd, 'xsel');
+});
+
+test('pasteCandidatesForPlatform() returns no candidates for an unknown platform', () => {
+  assert.deepEqual(pasteCandidatesForPlatform('freebsd'), []);
+});
+
+// readFromClipboard() with an injected fake `spawn` --------------------------
+
+test('readFromClipboard() returns the tool stdout when the platform tool succeeds', () => {
+  const calls = [];
+  const fakeSpawn = (cmd, args) => {
+    calls.push({ cmd, args });
+    return { status: 0, error: null, stdout: 'clipboard contents' };
+  };
+  const result = readFromClipboard({ platform: 'darwin', spawn: fakeSpawn });
+  assert.equal(result, 'clipboard contents');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].cmd, 'pbpaste');
+});
+
+test('readFromClipboard() falls through to the next candidate on linux when the first is missing', () => {
+  const calls = [];
+  const fakeSpawn = (cmd) => {
+    calls.push(cmd);
+    if (cmd === 'xclip') return { status: null, error: { code: 'ENOENT' } };
+    if (cmd === 'xsel') return { status: 0, error: null, stdout: 'from xsel' };
+    return { status: 1, error: null };
+  };
+  const result = readFromClipboard({ platform: 'linux', spawn: fakeSpawn });
+  assert.equal(result, 'from xsel');
+  assert.deepEqual(calls, ['xclip', 'xsel']);
+});
+
+test('readFromClipboard() returns null when every candidate is missing', () => {
+  const fakeSpawn = () => ({ status: null, error: { code: 'ENOENT' } });
+  const result = readFromClipboard({ platform: 'linux', spawn: fakeSpawn });
+  assert.equal(result, null);
+});
+
+test('readFromClipboard() returns null when the tool exists but exits non-zero', () => {
+  const fakeSpawn = () => ({ status: 1, error: null, stdout: '' });
+  const result = readFromClipboard({ platform: 'darwin', spawn: fakeSpawn });
+  assert.equal(result, null);
+});
+
+test('readFromClipboard() returns null on a platform with no known clipboard tool', () => {
+  const fakeSpawn = () => ({ status: 0, error: null, stdout: 'ignored' });
+  const result = readFromClipboard({ platform: 'freebsd', spawn: fakeSpawn });
+  assert.equal(result, null);
 });
 
 // CLI-level: `hydrate clip` ---------------------------------------------------
