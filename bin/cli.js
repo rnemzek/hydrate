@@ -15,6 +15,7 @@ const { runIngest } = require('../src/commands/ingest');
 const args = process.argv.slice(2);
 const command = args[0];
 const rest = args.slice(1);
+const isLfgCommand = Boolean(command) && command.toLowerCase() === 'lfg';
 
 if (VERSION_FLAGS.includes(command)) {
   printVersion();
@@ -31,49 +32,53 @@ if (COMMANDS[command] && rest.some((arg) => HELP_FLAGS.includes(arg))) {
   process.exit(0);
 }
 
-switch (command) {
-  case 'init':
-    runInit();
-    break;
+if (isLfgCommand) {
+  handleLfg(rest);
+} else {
+  switch (command) {
+    case 'init':
+      runInit();
+      break;
 
-  case 'prompt':
-    generatePrompt(rest);
-    break;
+    case 'prompt':
+      generatePrompt(rest);
+      break;
 
-  case 'complete':
-    handleComplete(rest);
-    break;
+    case 'complete':
+      handleComplete(rest);
+      break;
 
-  case 'clip':
-    handleClip();
-    break;
+    case 'clip':
+      handleClip();
+      break;
 
-  case 'check':
-    handleCheck();
-    break;
+    case 'check':
+      handleCheck();
+      break;
 
-  case 'checkup':
-  case 'status':
-    handleCheckup();
-    break;
+    case 'checkup':
+    case 'status':
+      handleCheckup();
+      break;
 
-  case 'context':
-    handleContext(rest);
-    break;
+    case 'context':
+      handleContext(rest);
+      break;
 
-  case 'export-portfolio':
-  case 'export':
-    handleExportPortfolio(rest);
-    break;
+    case 'export-portfolio':
+    case 'export':
+      handleExportPortfolio(rest);
+      break;
 
-  case 'ingest':
-  case 'paste':
-    handleIngest(rest);
-    break;
+    case 'ingest':
+    case 'paste':
+      handleIngest(rest);
+      break;
 
-  default:
-    printGlobalHelp();
-    break;
+    default:
+      printGlobalHelp();
+      break;
+  }
 }
 
 function getProjectName(cwd) {
@@ -417,11 +422,11 @@ function handleExportPortfolio(options = []) {
 `);
 }
 
-function handleIngest(options = []) {
+function handleIngest(options = [], { lfg = false } = {}) {
   const { cwd } = getPaths();
   const yes = options.includes('--yes') || options.includes('-y');
 
-  runIngest(cwd, { yes })
+  runIngest(cwd, { yes, lfg })
     .then((result) => {
       process.exit(result.code);
     })
@@ -429,6 +434,16 @@ function handleIngest(options = []) {
       console.error(`❌ Error: ${err.message}`);
       process.exit(1);
     });
+}
+
+// Easter egg alias: `hydrate lfg` (case-insensitive) runs the state
+// checkup pre-flight, then hands straight into the clipboard ingest flow —
+// a single command reconciling session state and launching execution.
+function handleLfg(options = []) {
+  const { cwd } = getPaths();
+  const result = runCheckup(cwd);
+  console.log(formatCheckupReport(result));
+  handleIngest(options, { lfg: true });
 }
 
 function outputChunkedArchitectPayload(payload, chunkSize) {

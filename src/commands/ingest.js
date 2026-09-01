@@ -24,14 +24,16 @@ function extractUowId(text) {
   return match ? match[0] : null;
 }
 
-function renderBanner() {
-  return [
+function renderBanner({ lfg = false } = {}) {
+  const lines = [
     '',
     '╔══════════════════════════════════════╗',
     '║        ⚙️  HYDRATE ENGINE             ║',
-    '╚══════════════════════════════════════╝',
-    ''
-  ].join('\n');
+    '╚══════════════════════════════════════╝'
+  ];
+  if (lfg) lines.push('🚀 LFG! Reconciling session state and diving in...');
+  lines.push('');
+  return lines.join('\n');
 }
 
 function archiveCurrentUow(cwd, currentUowText) {
@@ -66,6 +68,7 @@ const CHAT_EXIT_MESSAGE = '👋 Handing off to AI Architect — chat with Claude
 async function runIngest(cwd, options = {}) {
   const {
     yes = false,
+    lfg = false,
     readClipboard = readFromClipboard,
     input = process.stdin,
     output = process.stdout,
@@ -93,7 +96,7 @@ async function runIngest(cwd, options = {}) {
   const currentUowText = fs.existsSync(currentUowPath) ? fs.readFileSync(currentUowPath, 'utf8') : '';
   const empty = isEmptyUow(currentUowText);
 
-  log(renderBanner());
+  log(renderBanner({ lfg }));
 
   if (yes) {
     if (!empty) archiveCurrentUow(cwd, currentUowText);

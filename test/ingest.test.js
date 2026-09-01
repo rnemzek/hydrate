@@ -115,6 +115,16 @@ test('renderBanner() renders the HYDRATE ENGINE identity', () => {
   assert.match(renderBanner(), /HYDRATE ENGINE/);
 });
 
+test('renderBanner() omits the LFG easter egg line by default', () => {
+  assert.doesNotMatch(renderBanner(), /LFG/);
+});
+
+test('renderBanner({ lfg: true }) adds the LFG easter egg greeting', () => {
+  const banner = renderBanner({ lfg: true });
+  assert.match(banner, /HYDRATE ENGINE/);
+  assert.match(banner, /LFG/);
+});
+
 // runIngest() — direct, dependency-injected -------------------------------
 
 test('runIngest() errors and exits 1 when no clipboard tool is found', async () => {
@@ -137,6 +147,20 @@ test('runIngest() rejects non-UOW clipboard content without touching CURRENT_UOW
     assert.equal(result.action, 'rejected-invalid-payload');
     assert.match(lines.join('\n'), /does not resemble a valid UOW spec/);
     assert.equal(fs.readFileSync(currentUowPath(dir), 'utf8'), VALID_UOW);
+  });
+});
+
+test('runIngest({ lfg: true }) --yes applies the payload and renders the LFG banner', async () => {
+  await withTempDir(async (dir) => {
+    writeCurrentUow(dir, "# All UOWs are complete!\nRun 'hydrate prompt' when ready for next task.");
+    const { lines, log } = collectLogs();
+
+    const result = await runIngest(dir, { yes: true, lfg: true, readClipboard: () => VALID_UOW, log });
+
+    assert.equal(result.code, 0);
+    assert.equal(result.action, 'applied');
+    assert.equal(fs.readFileSync(currentUowPath(dir), 'utf8'), VALID_UOW);
+    assert.match(lines.join('\n'), /LFG/);
   });
 });
 
@@ -396,3 +420,26 @@ test('hydrate ingest --help prints command help', () => {
     assert.match(result.stdout, /hydrate ingest/);
   });
 });
+
+for (const alias of ['lfg', 'LFG', 'Lfg']) {
+  test(`hydrate ${alias} runs the checkup pre-flight then ingests with the LFG banner`, { skip: process.platform === 'win32' }, () => {
+    return withTempDir((dir) => {
+      const binDir = makeTempDir();
+      try {
+        runCli(['init'], dir);
+        const binName = process.platform === 'darwin' ? 'pbpaste' : 'xclip';
+        makeFakeClipboardReadBin(binDir, binName, VALID_UOW);
+
+        const result = runCli([alias, '--yes'], dir, { PATH: `${binDir}${path.delimiter}${process.env.PATH}` });
+
+        assert.equal(result.status, 0);
+        assert.match(result.stdout, /Hydrate Session Checkup/);
+        assert.match(result.stdout, /HYDRATE ENGINE/);
+        assert.match(result.stdout, /LFG/);
+        assert.equal(fs.readFileSync(currentUowPath(dir), 'utf8'), VALID_UOW);
+      } finally {
+        fs.rmSync(binDir, { recursive: true, force: true });
+      }
+    });
+  });
+}

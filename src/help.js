@@ -139,6 +139,20 @@ const COMMANDS = {
     usage: 'hydrate paste [--yes|-y]',
     options: [],
     hidden: true
+  },
+  lfg: {
+    summary: 'Easter egg: runs hydrate checkup, then hydrate ingest in one shot.',
+    usage: 'hydrate lfg [--yes|-y]',
+    whenToRun: 'Zero-touch session launch — reconcile state and ingest a clipboard UOW payload in a single command (case-insensitive: lfg, LFG, Lfg).',
+    whatItDoes: [
+      'Runs the same state reconciliation as `hydrate checkup` and prints its report.',
+      'Immediately continues into `hydrate ingest`, same options and clipboard flow as the ingest command.'
+    ],
+    options: [
+      ['-y, --yes', 'Skip the interactive prompt — archive any active UOW and apply the clipboard payload directly.']
+    ],
+    examples: ['hydrate lfg', 'hydrate lfg --yes'],
+    hidden: true
   }
 };
 
