@@ -6,6 +6,7 @@ const { runInit } = require('../src/init');
 const { HELP_FLAGS, VERSION_FLAGS, COMMANDS, printVersion, printGlobalHelp, printCommandHelp } = require('../src/help');
 const { copyToClipboard } = require('../src/clipboard');
 const { loadTemplate } = require('../src/templates');
+const { runCheck, formatReport } = require('../src/commands/check');
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -41,6 +42,10 @@ switch (command) {
 
   case 'clip':
     handleClip();
+    break;
+
+  case 'check':
+    handleCheck();
     break;
 
   default:
@@ -321,6 +326,13 @@ ${openTasks.map((line) => `  ${line}`).join('\n')}
 ⚡ Suggested commit:
    git add -A && git commit -m "${commitSubject}"
 `);
+}
+
+function handleCheck() {
+  const { cwd } = getPaths();
+  const result = runCheck(cwd);
+  console.log(formatReport(result));
+  process.exit(result.ok ? 0 : 1);
 }
 
 function outputChunkedArchitectPayload(payload, chunkSize) {

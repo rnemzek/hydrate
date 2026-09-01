@@ -48,6 +48,19 @@ const COMMANDS = {
     usage: 'hydrate clip',
     options: [],
     examples: ['hydrate clip']
+  },
+  check: {
+    summary: 'Validate that archived UOWs are fully logged across the .hydrate/ journals.',
+    usage: 'hydrate check',
+    whenToRun: 'Any time you want to confirm .hydrate/archive/ and the journal files (PROJECT_JOURNAL.md, DEV_JOURNAL.md, ARCHITECT_JOURNAL.md) are consistent.',
+    whatItDoes: [
+      'For every archived UOW in .hydrate/archive/, verifies a completed checklist entry exists in .hydrate/PROJECT_JOURNAL.md.',
+      'Verifies a matching section header exists in .hydrate/DEV_JOURNAL.md and .hydrate/ARCHITECT_JOURNAL.md.',
+      'Warns if .hydrate/CURRENT_UOW.md holds a fully-checked-off UOW that has not yet been archived.',
+      'Prints a pass/fail report and exits 0 when clean, 1 when any journal entry or archive step is missing.'
+    ],
+    options: [],
+    examples: ['hydrate check']
   }
 };
 
@@ -118,6 +131,7 @@ function printGlobalHelp() {
   console.log('  $ hydrate prompt --architect');
   console.log('  $ hydrate prompt --copy');
   console.log('  $ hydrate clip');
+  console.log('  $ hydrate check');
   console.log('  $ hydrate complete --force');
   console.log('  $ hydrate <command> --help');
   console.log('  $ hydrate --version');

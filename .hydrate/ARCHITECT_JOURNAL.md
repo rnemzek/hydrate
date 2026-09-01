@@ -56,3 +56,15 @@
 
 - **Contract:** the UOW-ID token that `hydrate complete` extracts from `.hydrate/CURRENT_UOW.md` — and reuses to flip the matching bullet in `.hydrate/ROADMAP.md`, name the archived canvas under `.hydrate/archive/`, and build the suggested commit message — now matches `/UOW-[A-Za-z0-9-]+/` instead of `/UOW-[\d\w]+/`, so hyphenated multi-segment IDs (`UOW-HYDRATE-01`, `UOW-<slug>-<hotfix-n>`) round-trip intact. No other contract changed; single-segment IDs (`UOW-42`) behave identically to before.
 - **Closes the deferred item** noted in UOW-HYDRATE-01's entry above.
+
+### UOW-HYDRATE-02 — completed 2026-09-01
+**Implement Journal & Archive Validation Utility (`hydrate check`)**
+
+- **New module:** `src/commands/check.js` exports `runCheck(cwd)` (pure logic, returns `{ ok, errors, warnings, checkedUows }`) and `formatReport(result)` (pure string rendering) — kept separate from `bin/cli.js` so the validation logic is independently unit-testable, consistent with `src/init.js`'s `scaffold()` split.
+- **New CLI surface:** `hydrate check` — non-mutating, read-only across all of `.hydrate/`. Exit code `0` = clean, `1` = any journal-entry error or unarchived-UOW warning.
+- **Contract — archived-UOW discovery:** the filename stem of each `.hydrate/archive/<UOW-ID>.md` file is treated as the canonical UOW ID list to validate against (matches the naming contract `hydrate complete` already writes, per UOW-HYDRATE-01-HOTFIX above).
+- **Contract — journal-entry assertions per archived UOW ID:**
+  - `.hydrate/PROJECT_JOURNAL.md`: exact-format check for `- [x] **[<UOW-ID>]**` (matches this repo's real `PROJECT_JOURNAL.md` convention exactly).
+  - `.hydrate/DEV_JOURNAL.md` / `.hydrate/ARCHITECT_JOURNAL.md`: lenient check — any markdown heading line (`#` through `######`) containing the UOW-ID token.
+- **Trade-off / spec deviation (confirmed against real repo state, not re-litigated with the Product Owner given the Fast-Path Protocol):** UOW-HYDRATE-02's payload specified `## [<UOW-ID>]` literally for the dev/architect journal headings. This repo's actual hand-maintained convention (established across UOW-HYDRATE-01 and -01-HOTFIX, both journals) is `### <UOW-ID> — completed <date>` — no brackets, three hashes. A literal implementation would report every existing archived UOW as broken, which is inconsistent with both journals' real content and with Acceptance Criterion 1 (a complete `.hydrate/` structure must pass). Chose the lenient heading matcher over amending the two hand-maintained journal files to fit the spec's format, since `DEV_JOURNAL.md`/`ARCHITECT_JOURNAL.md` are explicitly hand-maintained artifacts under CLAUDE.md §4, not `hydrate`-generated ones — `hydrate check`'s job is to validate against this project's actual established convention, not to prescribe a new one.
+- **New heuristic:** `findUnarchivedCompletedUow()` reuses the same "no remaining `- [ ]` tasks" signal `handleComplete()`'s `findOpenTasks()` already encodes in `bin/cli.js`, applied read-only to flag (not act on) a fully-checked-off `CURRENT_UOW.md` that hasn't been archived yet.
