@@ -140,6 +140,30 @@ const COMMANDS = {
     options: [],
     hidden: true
   },
+  uow: {
+    summary: 'Inspect UOWs — list all, show the last completed, or show one by ID.',
+    usage: 'hydrate uow [list|last|<uow-id>]',
+    whenToRun: 'Any time you want to inspect the active UOW or a past one without opening .hydrate/ files directly.',
+    whatItDoes: [
+      'hydrate uow list: prints the active UOW (if any) and every archived UOW in .hydrate/archive/, chronological.',
+      'hydrate uow last: prints the full content of the most recently archived UOW.',
+      'hydrate uow <uow-id>: prints the full content of a specific UOW, checked against the active canvas first, then .hydrate/archive/.'
+    ],
+    options: [],
+    examples: ['hydrate uow', 'hydrate uow list', 'hydrate uow last', 'hydrate uow UOW-HYDRATE-09']
+  },
+  artifacts: {
+    summary: 'Print a plain-English map of .hydrate/ and .claude/commands/ plus .gitignore guidance.',
+    usage: 'hydrate artifacts',
+    whenToRun: 'Any time you want a quick orientation on what Hydrate has scaffolded in this repo, or copy-pasteable .gitignore entries.',
+    whatItDoes: [
+      'Prints a tree of .hydrate/ (journals + .hydrate/archive/) with a one-line description of each file.',
+      'Prints a tree of .claude/commands/ with a one-line description of each slash command.',
+      'Prints a recommended .gitignore block for Hydrate-generated local/derived files.'
+    ],
+    options: [],
+    examples: ['hydrate artifacts']
+  },
   lfg: {
     summary: 'Easter egg: runs hydrate checkup, then hydrate ingest in one shot.',
     usage: 'hydrate lfg [--yes|-y]',
@@ -246,6 +270,8 @@ function printGlobalHelp() {
   console.log('  $ hydrate export-portfolio --out ./tech-overview.json');
   console.log('  $ hydrate ingest');
   console.log('  $ hydrate complete --force');
+  console.log('  $ hydrate uow list');
+  console.log('  $ hydrate artifacts');
   console.log('  $ hydrate <command> --help');
   console.log('  $ hydrate --version');
   console.log('');

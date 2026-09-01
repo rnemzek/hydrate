@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
-const { readFromClipboard } = require('../clipboard');
+const { readFromClipboard } = require('../utils/clipboard');
 
 // A clipboard payload must carry a "# UOW-..." id header AND at least one of
 // the UOW spec's standard section markers — requiring both keeps a stray

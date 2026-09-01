@@ -17,11 +17,39 @@ const HYDRATE_ARTIFACTS = [
 // reconciler, ingest a clipboard UOW, or pull a token-dense context payload
 // without the Product Owner typing raw hydrate commands.
 const CLAUDE_COMMANDS = [
+  { name: 'hydrate.md', label: 'Created .claude/commands/hydrate.md (/hydrate slash command)' },
   { name: 'hydrate-checkup.md', label: 'Created .claude/commands/hydrate-checkup.md (/hydrate-checkup slash command)' },
   { name: 'hydrate-ingest.md', label: 'Created .claude/commands/hydrate-ingest.md (/hydrate-ingest slash command)' },
   { name: 'hydrate-context.md', label: 'Created .claude/commands/hydrate-context.md (/hydrate-context slash command)' },
-  { name: 'hydrate-help.md', label: 'Created .claude/commands/hydrate-help.md (/hydrate-help slash command)' }
+  { name: 'hydrate-help.md', label: 'Created .claude/commands/hydrate-help.md (/hydrate-help slash command)' },
+  { name: 'hydrate-uow.md', label: 'Created .claude/commands/hydrate-uow.md (/hydrate-uow slash command)' },
+  { name: 'hydrate-artifacts.md', label: 'Created .claude/commands/hydrate-artifacts.md (/hydrate-artifacts slash command)' }
 ];
+
+// Idempotently writes just the .claude/commands/ slash-command definitions
+// (a subset of scaffold()) from templates/, skipping any file that already
+// exists. Used both by `hydrate init`'s full scaffold and by
+// bin/postinstall.js, which auto-provisions this into a host project on
+// `npm install` without requiring a manual `hydrate init`.
+function scaffoldClaudeCommands(cwd) {
+  const projectName = path.basename(cwd);
+  const created = [];
+
+  const claudeCommandsDir = path.join(cwd, '.claude', 'commands');
+  if (!fs.existsSync(claudeCommandsDir)) {
+    fs.mkdirSync(claudeCommandsDir, { recursive: true });
+  }
+
+  for (const { name, label } of CLAUDE_COMMANDS) {
+    const filePath = path.join(claudeCommandsDir, name);
+    if (!fs.existsSync(filePath)) {
+      fs.writeFileSync(filePath, renderTemplate(path.join('.claude', 'commands', name), { PROJECT_NAME: projectName }), 'utf8');
+      created.push({ path: filePath, label });
+    }
+  }
+
+  return created;
+}
 
 // Idempotently writes the canonical hydrate scaffold — CLAUDE.md plus the
 // 5-artifact .hydrate/ journal layout (and .hydrate/archive/) — from
@@ -58,19 +86,8 @@ function scaffold(cwd) {
     }
   }
 
-  // 7-9. Zero-touch /hydrate-* slash command definitions
-  const claudeCommandsDir = path.join(cwd, '.claude', 'commands');
-  if (!fs.existsSync(claudeCommandsDir)) {
-    fs.mkdirSync(claudeCommandsDir, { recursive: true });
-  }
-
-  for (const { name, label } of CLAUDE_COMMANDS) {
-    const filePath = path.join(claudeCommandsDir, name);
-    if (!fs.existsSync(filePath)) {
-      fs.writeFileSync(filePath, renderTemplate(path.join('.claude', 'commands', name), { PROJECT_NAME: projectName }), 'utf8');
-      created.push({ path: filePath, label });
-    }
-  }
+  // 7-13. Zero-touch /hydrate-* slash command definitions
+  created.push(...scaffoldClaudeCommands(cwd));
 
   return created;
 }
@@ -91,4 +108,4 @@ function runInit() {
 `);
 }
 
-module.exports = { runInit, scaffold };
+module.exports = { runInit, scaffold, scaffoldClaudeCommands };

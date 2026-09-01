@@ -4,13 +4,15 @@ const fs = require('fs');
 const path = require('path');
 const { runInit } = require('../src/init');
 const { HELP_FLAGS, VERSION_FLAGS, COMMANDS, printVersion, printGlobalHelp, printCommandHelp } = require('../src/help');
-const { copyToClipboard } = require('../src/clipboard');
+const { copyToClipboard } = require('../src/utils/clipboard');
 const { loadTemplate } = require('../src/templates');
 const { runCheck, formatReport } = require('../src/commands/check');
 const { runCheckup, formatCheckupReport } = require('../src/commands/checkup');
 const { buildContext } = require('../src/commands/context');
 const { buildPortfolio } = require('../src/commands/export-portfolio');
 const { runIngest } = require('../src/commands/ingest');
+const { listUows, getLastUow, getUowById, formatUowList } = require('../src/commands/uow');
+const { buildArtifactsReport } = require('../src/commands/artifacts');
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -73,6 +75,14 @@ if (isLfgCommand) {
     case 'ingest':
     case 'paste':
       handleIngest(rest);
+      break;
+
+    case 'uow':
+      handleUow(rest);
+      break;
+
+    case 'artifacts':
+      handleArtifacts();
       break;
 
     default:
@@ -444,6 +454,41 @@ function handleLfg(options = []) {
   const result = runCheckup(cwd);
   console.log(formatCheckupReport(result));
   handleIngest(options, { lfg: true });
+}
+
+// Routes `hydrate uow [list|last|<id>]`. Defaults to `list` so the
+// /hydrate-uow slash command can shell out to `hydrate uow $ARGUMENTS`
+// even when no argument was given.
+function handleUow(options = []) {
+  const { cwd } = getPaths();
+  const sub = options[0] || 'list';
+
+  if (sub === 'list') {
+    console.log(formatUowList(listUows(cwd)));
+    return;
+  }
+
+  if (sub === 'last') {
+    const last = getLastUow(cwd);
+    if (!last) {
+      console.error('❌ Error: No archived UOWs found in .hydrate/archive/.');
+      process.exit(1);
+    }
+    console.log(last.content);
+    return;
+  }
+
+  const found = getUowById(cwd, sub);
+  if (!found) {
+    console.error(`❌ Error: No UOW found matching "${sub}" (checked active canvas and .hydrate/archive/).`);
+    process.exit(1);
+  }
+  console.log(found.content);
+}
+
+function handleArtifacts() {
+  const { cwd } = getPaths();
+  console.log(buildArtifactsReport(cwd));
 }
 
 function outputChunkedArchitectPayload(payload, chunkSize) {

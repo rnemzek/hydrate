@@ -6,7 +6,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const CLI_PATH = path.join(__dirname, '..', 'bin', 'cli.js');
-const { copyToClipboard, candidatesForPlatform, readFromClipboard, pasteCandidatesForPlatform } = require('../src/clipboard');
+const { copyToClipboard, candidatesForPlatform, readFromClipboard, pasteCandidatesForPlatform } = require('../src/utils/clipboard');
 
 function makeTempDir(prefix) {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));

@@ -21,7 +21,7 @@ function withTempDir(fn) {
 }
 
 const HYDRATE_FILES = ['CURRENT_UOW.md', 'ROADMAP.md', 'PROJECT_JOURNAL.md', 'DEV_JOURNAL.md', 'ARCHITECT_JOURNAL.md'];
-const CLAUDE_COMMAND_FILES = ['hydrate-checkup.md', 'hydrate-ingest.md', 'hydrate-context.md', 'hydrate-help.md'];
+const CLAUDE_COMMAND_FILES = ['hydrate.md', 'hydrate-checkup.md', 'hydrate-ingest.md', 'hydrate-context.md', 'hydrate-help.md', 'hydrate-uow.md', 'hydrate-artifacts.md'];
 
 // src/templates.js -------------------------------------------------------
 
@@ -48,7 +48,7 @@ test('scaffold() creates CLAUDE.md, the 5-artifact .hydrate/ layout, .hydrate/ar
   withTempDir((dir) => {
     const created = scaffold(dir);
 
-    assert.equal(created.length, 10);
+    assert.equal(created.length, 13);
     assert.ok(fs.existsSync(path.join(dir, 'CLAUDE.md')));
     assert.ok(fs.existsSync(path.join(dir, '.hydrate', 'archive')));
     for (const file of HYDRATE_FILES) {
@@ -99,7 +99,7 @@ test('scaffold() only creates the files that are missing', () => {
 
     const created = scaffold(dir);
 
-    assert.equal(created.length, 9);
+    assert.equal(created.length, 12);
     assert.ok(!created.some((c) => c.path.endsWith('CLAUDE.md')));
     for (const file of HYDRATE_FILES) {
       assert.ok(fs.existsSync(path.join(dir, '.hydrate', file)));
@@ -146,10 +146,13 @@ test('runInit() prints a checklist of created files and next steps', () => {
     assert.match(output, /Created \.hydrate\/PROJECT_JOURNAL\.md/);
     assert.match(output, /Created \.hydrate\/DEV_JOURNAL\.md/);
     assert.match(output, /Created \.hydrate\/ARCHITECT_JOURNAL\.md/);
+    assert.match(output, /Created \.claude\/commands\/hydrate\.md/);
     assert.match(output, /Created \.claude\/commands\/hydrate-checkup\.md/);
     assert.match(output, /Created \.claude\/commands\/hydrate-ingest\.md/);
     assert.match(output, /Created \.claude\/commands\/hydrate-context\.md/);
     assert.match(output, /Created \.claude\/commands\/hydrate-help\.md/);
+    assert.match(output, /Created \.claude\/commands\/hydrate-uow\.md/);
+    assert.match(output, /Created \.claude\/commands\/hydrate-artifacts\.md/);
     assert.match(output, /hydrate-checkup/);
     assert.match(output, /hydrate-help/);
     assert.match(output, /Harness Initialized/);
