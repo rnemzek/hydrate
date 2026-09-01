@@ -7,6 +7,7 @@ const { HELP_FLAGS, VERSION_FLAGS, COMMANDS, printVersion, printGlobalHelp, prin
 const { copyToClipboard } = require('../src/clipboard');
 const { loadTemplate } = require('../src/templates');
 const { runCheck, formatReport } = require('../src/commands/check');
+const { buildContext } = require('../src/commands/context');
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -46,6 +47,10 @@ switch (command) {
 
   case 'check':
     handleCheck();
+    break;
+
+  case 'context':
+    handleContext(rest);
     break;
 
   default:
@@ -333,6 +338,28 @@ function handleCheck() {
   const result = runCheck(cwd);
   console.log(formatReport(result));
   process.exit(result.ok ? 0 : 1);
+}
+
+function handleContext(options = []) {
+  const { cwd } = getPaths();
+  const shouldCopy = options.includes('--clip') || options.includes('-c');
+
+  let depth = 3;
+  const depthFlagIndex = options.findIndex((arg) => arg === '--depth');
+  if (depthFlagIndex !== -1 && options[depthFlagIndex + 1] !== undefined) {
+    const parsed = parseInt(options[depthFlagIndex + 1], 10);
+    if (!isNaN(parsed) && parsed > 0) depth = parsed;
+  }
+  const depthEqArg = options.find((arg) => arg.startsWith('--depth='));
+  if (depthEqArg) {
+    const parsed = parseInt(depthEqArg.split('=')[1], 10);
+    if (!isNaN(parsed) && parsed > 0) depth = parsed;
+  }
+
+  const payload = buildContext(cwd, { depth });
+  console.log(payload);
+
+  if (shouldCopy) copyWithFeedback(payload, { printFallback: false });
 }
 
 function outputChunkedArchitectPayload(payload, chunkSize) {

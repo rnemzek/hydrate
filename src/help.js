@@ -61,6 +61,22 @@ const COMMANDS = {
     ],
     options: [],
     examples: ['hydrate check']
+  },
+  context: {
+    summary: 'Compile a token-dense context payload from .hydrate/ for seeding a fresh AI prompt session.',
+    usage: 'hydrate context [--clip] [--depth <n>]',
+    whenToRun: 'Any time you need to hand a fresh AI session (or a new chat/model) a compact snapshot of the active task, recent architecture decisions, and the macro roadmap.',
+    whatItDoes: [
+      'Prints the full contents of .hydrate/CURRENT_UOW.md (or a fallback notice if no UOW is assigned).',
+      'Pulls the last <n> decision-log entries from .hydrate/ARCHITECT_JOURNAL.md (default: 3).',
+      'Pulls the "Section 1: Scheduled Roadmap Items" section from .hydrate/ROADMAP.md.',
+      'Optionally copies the compiled payload straight to the system clipboard with --clip.'
+    ],
+    options: [
+      ['-c, --clip', 'Copy the compiled context payload to the system clipboard.'],
+      ['--depth <n>', 'Number of recent .hydrate/ARCHITECT_JOURNAL.md entries to include (default: 3).']
+    ],
+    examples: ['hydrate context', 'hydrate context --clip', 'hydrate context --depth 5']
   }
 };
 
@@ -132,6 +148,7 @@ function printGlobalHelp() {
   console.log('  $ hydrate prompt --copy');
   console.log('  $ hydrate clip');
   console.log('  $ hydrate check');
+  console.log('  $ hydrate context --clip');
   console.log('  $ hydrate complete --force');
   console.log('  $ hydrate <command> --help');
   console.log('  $ hydrate --version');
