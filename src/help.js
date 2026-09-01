@@ -62,6 +62,24 @@ const COMMANDS = {
     options: [],
     examples: ['hydrate check']
   },
+  checkup: {
+    summary: 'Reconcile session state — dirty working tree, unarchived completions, or a broken test build.',
+    usage: 'hydrate checkup',
+    whenToRun: 'At the start (or any point) of a session to see exactly what state the project is in before deciding what to do next.',
+    whatItDoes: [
+      'Reports "Ready for next task" when .hydrate/CURRENT_UOW.md is empty/reset, noting whether .hydrate/ROADMAP.md has pending items.',
+      'Reports a concise in-progress summary (modified file count + remaining tasks) when .hydrate/CURRENT_UOW.md is active.',
+      'Runs `npm test` once every task in .hydrate/CURRENT_UOW.md is checked off, reporting either "complete but unarchived" (tests pass) or a broken-build warning (tests fail).'
+    ],
+    options: [],
+    examples: ['hydrate checkup', 'hydrate status']
+  },
+  status: {
+    summary: 'Alias for hydrate checkup.',
+    usage: 'hydrate status',
+    options: [],
+    hidden: true
+  },
   context: {
     summary: 'Compile a token-dense context payload from .hydrate/ for seeding a fresh AI prompt session.',
     usage: 'hydrate context [--clip] [--depth <n>]',
@@ -171,6 +189,7 @@ function printGlobalHelp() {
   console.log('  $ hydrate prompt --copy');
   console.log('  $ hydrate clip');
   console.log('  $ hydrate check');
+  console.log('  $ hydrate checkup');
   console.log('  $ hydrate context --clip');
   console.log('  $ hydrate export-portfolio --out ./tech-overview.json');
   console.log('  $ hydrate complete --force');

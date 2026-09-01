@@ -7,6 +7,7 @@ const { HELP_FLAGS, VERSION_FLAGS, COMMANDS, printVersion, printGlobalHelp, prin
 const { copyToClipboard } = require('../src/clipboard');
 const { loadTemplate } = require('../src/templates');
 const { runCheck, formatReport } = require('../src/commands/check');
+const { runCheckup, formatCheckupReport } = require('../src/commands/checkup');
 const { buildContext } = require('../src/commands/context');
 const { buildPortfolio } = require('../src/commands/export-portfolio');
 
@@ -48,6 +49,11 @@ switch (command) {
 
   case 'check':
     handleCheck();
+    break;
+
+  case 'checkup':
+  case 'status':
+    handleCheckup();
     break;
 
   case 'context':
@@ -344,6 +350,13 @@ function handleCheck() {
   const result = runCheck(cwd);
   console.log(formatReport(result));
   process.exit(result.ok ? 0 : 1);
+}
+
+function handleCheckup() {
+  const { cwd } = getPaths();
+  const result = runCheckup(cwd);
+  console.log(formatCheckupReport(result));
+  process.exit(result.state === 'error' || result.state === 'broken-build' ? 1 : 0);
 }
 
 function handleContext(options = []) {
