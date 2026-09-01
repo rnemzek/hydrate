@@ -21,6 +21,7 @@ function withTempDir(fn) {
 }
 
 const HYDRATE_FILES = ['CURRENT_UOW.md', 'ROADMAP.md', 'PROJECT_JOURNAL.md', 'DEV_JOURNAL.md', 'ARCHITECT_JOURNAL.md'];
+const CLAUDE_COMMAND_FILES = ['hydrate-checkup.md', 'hydrate-ingest.md', 'hydrate-context.md'];
 
 // src/templates.js -------------------------------------------------------
 
@@ -43,19 +44,24 @@ test('renderTemplate() leaves unmatched placeholders untouched', () => {
 
 // scaffold() ---------------------------------------------------------------
 
-test('scaffold() creates CLAUDE.md, the 5-artifact .hydrate/ layout, and .hydrate/archive/', () => {
+test('scaffold() creates CLAUDE.md, the 5-artifact .hydrate/ layout, .hydrate/archive/, and the /hydrate-* slash commands', () => {
   withTempDir((dir) => {
     const created = scaffold(dir);
 
-    assert.equal(created.length, 6);
+    assert.equal(created.length, 9);
     assert.ok(fs.existsSync(path.join(dir, 'CLAUDE.md')));
     assert.ok(fs.existsSync(path.join(dir, '.hydrate', 'archive')));
     for (const file of HYDRATE_FILES) {
       assert.ok(fs.existsSync(path.join(dir, '.hydrate', file)), `expected .hydrate/${file} to exist`);
     }
+    for (const file of CLAUDE_COMMAND_FILES) {
+      assert.ok(fs.existsSync(path.join(dir, '.claude', 'commands', file)), `expected .claude/commands/${file} to exist`);
+    }
 
     const claude = fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8');
     assert.match(claude, new RegExp(`# ${path.basename(dir)} — Operating Rules`));
+    assert.match(claude, /## 0\. Fast-Start Boot Protocol/);
+    assert.match(claude, /hydrate checkup/);
 
     const currentUow = fs.readFileSync(path.join(dir, '.hydrate', 'CURRENT_UOW.md'), 'utf8');
     assert.match(currentUow, /All UOWs are complete!/);
@@ -93,11 +99,28 @@ test('scaffold() only creates the files that are missing', () => {
 
     const created = scaffold(dir);
 
-    assert.equal(created.length, 5);
+    assert.equal(created.length, 8);
     assert.ok(!created.some((c) => c.path.endsWith('CLAUDE.md')));
     for (const file of HYDRATE_FILES) {
       assert.ok(fs.existsSync(path.join(dir, '.hydrate', file)));
     }
+    for (const file of CLAUDE_COMMAND_FILES) {
+      assert.ok(fs.existsSync(path.join(dir, '.claude', 'commands', file)));
+    }
+  });
+});
+
+test('scaffold() does not overwrite an existing slash command file', () => {
+  withTempDir((dir) => {
+    fs.mkdirSync(path.join(dir, '.claude', 'commands'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.claude', 'commands', 'hydrate-checkup.md'), 'custom command');
+
+    const created = scaffold(dir);
+
+    assert.ok(!created.some((c) => c.path.endsWith(path.join('.claude', 'commands', 'hydrate-checkup.md'))));
+    assert.equal(fs.readFileSync(path.join(dir, '.claude', 'commands', 'hydrate-checkup.md'), 'utf8'), 'custom command');
+    assert.ok(fs.existsSync(path.join(dir, '.claude', 'commands', 'hydrate-ingest.md')));
+    assert.ok(fs.existsSync(path.join(dir, '.claude', 'commands', 'hydrate-context.md')));
   });
 });
 
@@ -123,6 +146,10 @@ test('runInit() prints a checklist of created files and next steps', () => {
     assert.match(output, /Created \.hydrate\/PROJECT_JOURNAL\.md/);
     assert.match(output, /Created \.hydrate\/DEV_JOURNAL\.md/);
     assert.match(output, /Created \.hydrate\/ARCHITECT_JOURNAL\.md/);
+    assert.match(output, /Created \.claude\/commands\/hydrate-checkup\.md/);
+    assert.match(output, /Created \.claude\/commands\/hydrate-ingest\.md/);
+    assert.match(output, /Created \.claude\/commands\/hydrate-context\.md/);
+    assert.match(output, /hydrate-checkup/);
     assert.match(output, /Harness Initialized/);
   });
 });

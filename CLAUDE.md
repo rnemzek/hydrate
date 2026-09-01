@@ -1,5 +1,13 @@
 # hydrate — Operating Rules, Stack Constraints & AI Execution Protocol
 
+## 0. Fast-Start Boot Protocol
+- On session boot, immediately run `hydrate checkup` to reconcile state from `.hydrate/CURRENT_UOW.md`, `.hydrate/archive/`, and `git status` before proposing or starting any work.
+- Canonical context sources are `.hydrate/CURRENT_UOW.md`, `.hydrate/ROADMAP.md`, and `.hydrate/ARCHITECT_JOURNAL.md`. A legacy `CONTEXT.md` lookup notice is suppressed — do not look for or request a project `CONTEXT.md`.
+- Zero-touch slash commands are available for this workflow:
+  - `/hydrate-checkup` — run the state reconciler.
+  - `/hydrate-ingest` — ingest a UOW payload from the clipboard.
+  - `/hydrate-context` — output/clip a token-dense context prompt.
+
 ## 1. Operating Triad Contract
 - **Product Owner (Human):** Final authority on scope, acceptance criteria, trade-offs, and repo commits.
 - **Lead Architect (Gemini):** System design, stack boundaries, multi-file architectural consistency, and UOW payload specification. Writes `.hydrate/CURRENT_UOW.md` and `.hydrate/ROADMAP.md`.
