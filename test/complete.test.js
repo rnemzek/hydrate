@@ -168,3 +168,51 @@ test('hydrate complete -f is the short form of --force', () => {
     assert.match(result.stdout, /UOW-42 Officially Complete/);
   });
 });
+
+// Multi-hyphenated UOW IDs -------------------------------------------------
+// Regression coverage for the UOW-[\d\w]+ regex truncating hyphenated IDs
+// (e.g. "UOW-HYDRATE-01" -> "UOW-HYDRATE") fixed in UOW-HYDRATE-01-HOTFIX.
+
+for (const uowId of ['UOW-HYDRATE-01', 'UOW-HOTFIX-03', 'UOW-CARBOYZ-12']) {
+  test(`hydrate complete preserves the full multi-hyphenated UOW ID "${uowId}" without truncation`, () => {
+    withTempDir((dir) => {
+      const uowBody = `## ${uowId}: Fixture\n- **Status:** IN_PROGRESS\n\n- [x] Task 1\n`;
+      initAndPromptWithUow(dir, uowBody);
+
+      const result = runCli(['complete'], dir);
+
+      assert.equal(result.status, 0);
+      assert.match(result.stdout, new RegExp(`${uowId} Officially Complete`));
+      assert.match(result.stdout, new RegExp(`git commit -m "feat: complete ${uowId}"`));
+
+      const archived = fs.readFileSync(path.join(dir, '.hydrate', 'archive', `${uowId}.md`), 'utf8');
+      assert.equal(archived, uowBody);
+
+      const projectJournal = fs.readFileSync(path.join(dir, '.hydrate', 'PROJECT_JOURNAL.md'), 'utf8');
+      assert.match(projectJournal, new RegExp(`### ${uowId} — completed \\d{4}-\\d{2}-\\d{2}`));
+    });
+  });
+}
+
+test('hydrate complete marks a multi-hyphenated UOW ID as [x] in .hydrate/ROADMAP.md without truncation', () => {
+  withTempDir((dir) => {
+    runCli(['init'], dir);
+    fs.writeFileSync(
+      path.join(dir, '.hydrate', 'ROADMAP.md'),
+      '# Test Roadmap\n\n## Section 1: Scheduled Roadmap Items\n- [ ] **UOW-HYDRATE-01**: Scaffold Engine\n- [ ] **UOW-HYDRATE-02**: Later Sprint\n\n---\n\n## Section 2: Future features\n'
+    );
+    fs.writeFileSync(
+      path.join(dir, '.hydrate', 'CURRENT_UOW.md'),
+      '## UOW-HYDRATE-01: Fixture\n- **Status:** IN_PROGRESS\n\n- [x] Task 1\n'
+    );
+
+    const result = runCli(['complete'], dir);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /Marked UOW-HYDRATE-01 as \[x\] in \.hydrate[\\/]ROADMAP\.md \(Iterated: 0\)/);
+
+    const roadmap = fs.readFileSync(path.join(dir, '.hydrate', 'ROADMAP.md'), 'utf8');
+    assert.match(roadmap, /- \[x\] \*\*UOW-HYDRATE-01\*\*: Scaffold Engine \(Iterated: 0\)/);
+    assert.match(roadmap, /- \[ \] \*\*UOW-HYDRATE-02\*\*: Later Sprint/);
+  });
+});

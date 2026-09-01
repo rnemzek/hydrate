@@ -50,3 +50,9 @@
 - **Contract:** `hydrate complete`'s roadmap-bullet-flip regex is unchanged (`^([-#]+) \[ \] (.*\bUOW-XX\b.*)$`), just retargeted from `docs/SYSTEM.md` to `.hydrate/ROADMAP.md`; `findNextPendingUow()` retargeted from `docs/SYSTEM.md`'s `## 2.` heading to `.hydrate/ROADMAP.md`'s `## Section 1` heading (case-insensitive prefix match).
 - **Trade-off:** Chose a full migration (scaffold + `bin/cli.js` prompt/complete + tests) over a hybrid that kept `docs/SYSTEM.md` generation alongside the new journals — confirmed with the Product Owner, since a hybrid would have left `hydrate prompt`/`hydrate complete` internally inconsistent with the new architecture and violated the UOW's "zero legacy references" requirement.
 - **Deferred:** the `hydrate complete` UOW-ID regex (`/UOW-[\d\w]+/`) still truncates hyphenated IDs like `UOW-HYDRATE-01` to `UOW-HYDRATE` — a pre-existing limitation, out of this UOW's surgical scope, left for a future UOW.
+
+### UOW-HYDRATE-01-HOTFIX — completed 2026-09-01
+**Fix UOW ID Regex Parser for Hyphenated & Alphanumeric Identifiers**
+
+- **Contract:** the UOW-ID token that `hydrate complete` extracts from `.hydrate/CURRENT_UOW.md` — and reuses to flip the matching bullet in `.hydrate/ROADMAP.md`, name the archived canvas under `.hydrate/archive/`, and build the suggested commit message — now matches `/UOW-[A-Za-z0-9-]+/` instead of `/UOW-[\d\w]+/`, so hyphenated multi-segment IDs (`UOW-HYDRATE-01`, `UOW-<slug>-<hotfix-n>`) round-trip intact. No other contract changed; single-segment IDs (`UOW-42`) behave identically to before.
+- **Closes the deferred item** noted in UOW-HYDRATE-01's entry above.

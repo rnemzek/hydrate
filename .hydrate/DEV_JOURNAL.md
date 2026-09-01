@@ -52,3 +52,12 @@
 - Updated `src/help.js` command summaries/workflow banner and `test/{init,prompt,complete,cli}.test.js` to match — `cli.test.js`'s stale `doesNotMatch(/ROADMAP\.md/)` assertion (a leftover from pruning v1's root-level `ROADMAP.md`) was removed since `.hydrate/ROADMAP.md` is now an intentional v2 artifact.
 - Verified end-to-end by hand in a scratch dir: `init` → edit `.hydrate/ROADMAP.md` → `prompt` (pulls the pending UOW, writes the fingerprinted payload) → `complete` (marks the roadmap bullet `[x]`, appends to `PROJECT_JOURNAL.md`, archives the canvas).
 - Test suite: 48/48 passing. Coverage: `src/init.js` 100% line/branch; `bin/cli.js` 93.48% line / 73.81% branch; `src/help.js` 93.99% line / 72.00% branch — all new branches added by this UOW are covered; the uncovered lines are pre-existing edge cases (malformed `package.json`, `--chunk-size` parsing, non-chunked architect payload path) outside this UOW's surgical scope.
+
+### UOW-HYDRATE-01-HOTFIX — completed 2026-09-01
+**Fix UOW ID Regex Parser for Hyphenated & Alphanumeric Identifiers**
+
+- `bin/cli.js:251` — `handleComplete()`'s UOW-ID extraction regex was `/UOW-[\d\w]+/`, which stops at the first `-` (since `\w` excludes hyphens) and truncated hyphenated IDs like `UOW-HYDRATE-01` down to `UOW-HYDRATE`, dropping the `-01` sub-slug. Confirmed as the only occurrence of a UOW-ID regex in the codebase (`grep -rn "UOW-\[" bin src`).
+- Fixed by widening the character class to `/UOW-[A-Za-z0-9-]+/`, so hyphens inside the ID are retained; matching still stops naturally at the first non-alphanumeric/non-hyphen character (`:`, `*`, whitespace), so existing single-segment IDs (`UOW-42`) are unaffected.
+- Added a parameterized regression test in `test/complete.test.js` covering `UOW-HYDRATE-01`, `UOW-HOTFIX-03`, and `UOW-CARBOYZ-12` end-to-end (stdout message, suggested commit, `.hydrate/archive/<id>.md` filename, `.hydrate/PROJECT_JOURNAL.md` entry), plus a dedicated test confirming the `.hydrate/ROADMAP.md` bullet-flip regex also preserves the full hyphenated ID.
+- Verified by hand in a scratch dir: `init` → set `.hydrate/CURRENT_UOW.md` to `## UOW-HYDRATE-01: Fixture` → `complete` → archived to `.hydrate/archive/UOW-HYDRATE-01.md` (previously would have been `UOW-HYDRATE.md`).
+- Test suite: 52/52 passing (48 prior + 4 new). No coverage regressions.

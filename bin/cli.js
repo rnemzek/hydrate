@@ -248,7 +248,9 @@ function handleComplete(options = []) {
   }
 
   const uowContent = fs.readFileSync(currentUowPath, 'utf8');
-  const uowMatch = uowContent.match(/UOW-[\d\w]+/);
+  // Hyphens are part of the ID itself (e.g. "UOW-HYDRATE-01", "UOW-HOTFIX-03"),
+  // so \w alone (which excludes "-") would truncate at the first sub-slug.
+  const uowMatch = uowContent.match(/UOW-[A-Za-z0-9-]+/);
   if (!uowMatch) {
     console.error("❌ Error: Could not determine active UOW ID from .hydrate/CURRENT_UOW.md");
     process.exit(1);
