@@ -52,6 +52,53 @@ test('hydrate sync on an already-initialized repo reports it checked the repo', 
   });
 });
 
+test('hydrate sync guards an unmarked brownfield CLAUDE.md and reports --force is required', () => {
+  withTempDir((dir) => {
+    runCli(['init'], dir);
+    fs.writeFileSync(path.join(dir, 'CLAUDE.md'), 'legacy rules', 'utf8');
+
+    const result = runCli(['sync'], dir);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /hydrate sync --force/);
+    assert.equal(fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8'), 'legacy rules');
+  });
+});
+
+test('hydrate sync --force wholesale-resets an unmarked brownfield CLAUDE.md', () => {
+  withTempDir((dir) => {
+    runCli(['init'], dir);
+    fs.writeFileSync(path.join(dir, 'CLAUDE.md'), 'legacy rules', 'utf8');
+
+    const result = runCli(['sync', '--force'], dir);
+
+    assert.equal(result.status, 0);
+    assert.doesNotMatch(fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8'), /legacy rules/);
+  });
+});
+
+// init --force -----------------------------------------------------------------
+
+test('hydrate init without --force guards an unmarked brownfield CLAUDE.md', () => {
+  withTempDir((dir) => {
+    fs.writeFileSync(path.join(dir, 'CLAUDE.md'), 'legacy rules', 'utf8');
+    const result = runCli(['init'], dir);
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /hydrate init --force/);
+    assert.equal(fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8'), 'legacy rules');
+  });
+});
+
+test('hydrate init --force wholesale-resets an unmarked brownfield CLAUDE.md', () => {
+  withTempDir((dir) => {
+    fs.writeFileSync(path.join(dir, 'CLAUDE.md'), 'legacy rules', 'utf8');
+    const result = runCli(['init', '--force'], dir);
+    assert.equal(result.status, 0);
+    assert.doesNotMatch(fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8'), /legacy rules/);
+    assert.match(fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8'), /BEGIN HYDRATE MANAGED BLOCK/);
+  });
+});
+
 // eject -----------------------------------------------------------------------
 
 test('hydrate eject --help prints command help', () => {

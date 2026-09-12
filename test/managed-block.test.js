@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { renderManagedBlock, hasManagedBlock, applyManagedBlock, stripManagedBlock } = require('../src/utils/managed-block');
+const { renderManagedBlock, hasManagedBlock, applyManagedBlock, stripManagedBlock, needsGreenfieldReset } = require('../src/utils/managed-block');
 
 test('renderManagedBlock() wraps the body in versioned begin/end markers', () => {
   const block = renderManagedBlock('Some rules', '1.4.0');
@@ -22,12 +22,36 @@ test('applyManagedBlock() creates a fresh file when there is no existing content
   assert.match(result, /Hydrate rules/);
 });
 
-test('applyManagedBlock() appends the block when existing content has no markers', () => {
+test('applyManagedBlock() refuses (returns null) when existing content has no markers and force is not set', () => {
   const result = applyManagedBlock('# My Project\n- custom rule', 'Hydrate rules', '1.0.0');
-  assert.match(result, /# My Project\n- custom rule/);
+  assert.equal(result, null);
+});
+
+test('applyManagedBlock({ force: true }) wholesale-replaces unmarked legacy content with just the block', () => {
+  const result = applyManagedBlock('# My Project\n- custom rule', 'Hydrate rules', '1.0.0', { force: true });
   assert.match(result, /BEGIN HYDRATE MANAGED BLOCK v1\.0\.0/);
-  // Custom content must come first, block appended after.
-  assert.ok(result.indexOf('custom rule') < result.indexOf('BEGIN HYDRATE MANAGED BLOCK'));
+  assert.match(result, /Hydrate rules/);
+  assert.doesNotMatch(result, /custom rule/);
+});
+
+test('applyManagedBlock({ force: true }) still only replaces the delimited text when markers already exist', () => {
+  const original = `# My Project\n- custom rule\n\n${renderManagedBlock('old rules', '1.0.0')}\n`;
+  const result = applyManagedBlock(original, 'new rules', '1.1.0', { force: true });
+
+  assert.match(result, /# My Project\n- custom rule/);
+  assert.match(result, /new rules/);
+});
+
+test('applyManagedBlock({ force: true }) on brand-new content behaves the same as without force', () => {
+  assert.equal(applyManagedBlock(null, 'rules', '1.0.0', { force: true }), applyManagedBlock(null, 'rules', '1.0.0'));
+});
+
+test('needsGreenfieldReset() flags unmarked non-empty content only', () => {
+  assert.equal(needsGreenfieldReset('# My Project\n- custom rule'), true);
+  assert.equal(needsGreenfieldReset(renderManagedBlock('rules', '1.0.0')), false);
+  assert.equal(needsGreenfieldReset(''), false);
+  assert.equal(needsGreenfieldReset(null), false);
+  assert.equal(needsGreenfieldReset('   '), false);
 });
 
 test('applyManagedBlock() replaces only the delimited text when markers already exist', () => {

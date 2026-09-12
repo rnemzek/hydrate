@@ -56,15 +56,28 @@ test('syncRepo() reports no updates when everything already matches the current 
   });
 });
 
-test('syncRepo() appends the managed block to a brownfield CLAUDE.md without touching custom content', () => {
+test('syncRepo() guards (leaves untouched) a brownfield CLAUDE.md with no markers when force is not set', () => {
   withTempDir((dir) => {
     scaffold(dir);
     fs.writeFileSync(path.join(dir, 'CLAUDE.md'), '# My Project\n- pnpm only\n', 'utf8');
 
-    syncRepo(dir, { version: '2.0.0' });
+    const result = syncRepo(dir, { version: '2.0.0' });
 
+    assert.equal(result.guard, path.join(dir, 'CLAUDE.md'));
+    assert.equal(fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8'), '# My Project\n- pnpm only\n');
+  });
+});
+
+test('syncRepo({ force: true }) wholesale-replaces a brownfield CLAUDE.md, discarding the legacy content', () => {
+  withTempDir((dir) => {
+    scaffold(dir);
+    fs.writeFileSync(path.join(dir, 'CLAUDE.md'), '# My Project\n- pnpm only\n', 'utf8');
+
+    const result = syncRepo(dir, { version: '2.0.0', force: true });
+
+    assert.equal(result.guard, null);
     const claude = fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8');
-    assert.match(claude, /# My Project\n- pnpm only/);
+    assert.doesNotMatch(claude, /pnpm only/);
     assert.ok(hasManagedBlock(claude));
     assert.match(claude, /v2\.0\.0/);
   });
@@ -113,6 +126,38 @@ test('runSync() --recursive syncs the root and every nested repo, bootstrapping 
     assert.equal(nested.action, 'bootstrapped');
     assert.ok(fs.existsSync(path.join(dir, 'packages', 'nested', '.hydrate', 'CURRENT_UOW.md')));
     assert.ok(logs.some((l) => l.includes('Bootstrapped')));
+  });
+});
+
+test('runSync() logs a guard warning instead of "already up to date" when CLAUDE.md needs a greenfield reset', () => {
+  withTempDir((dir) => {
+    scaffold(dir);
+    fs.writeFileSync(path.join(dir, 'CLAUDE.md'), 'legacy rules', 'utf8');
+
+    const logs = [];
+    runSync(dir, { log: (m) => logs.push(m) });
+
+    assert.ok(logs.some((l) => l.includes('hydrate sync --force')));
+    assert.ok(!logs.some((l) => l.includes('already up to date')));
+  });
+});
+
+test('runSync({ recursive: true, force: true }) resets CLAUDE.md across every discovered repo', () => {
+  withTempDir((dir) => {
+    fs.mkdirSync(path.join(dir, '.git'));
+    scaffold(dir);
+    fs.writeFileSync(path.join(dir, 'CLAUDE.md'), 'root legacy rules', 'utf8');
+
+    fs.mkdirSync(path.join(dir, 'packages', 'nested'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'packages', 'nested', 'package.json'), '{}');
+    scaffold(path.join(dir, 'packages', 'nested'));
+    fs.writeFileSync(path.join(dir, 'packages', 'nested', 'CLAUDE.md'), 'nested legacy rules', 'utf8');
+
+    const results = runSync(dir, { recursive: true, force: true, log: () => {} });
+
+    assert.equal(results.length, 2);
+    assert.doesNotMatch(fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8'), /root legacy rules/);
+    assert.doesNotMatch(fs.readFileSync(path.join(dir, 'packages', 'nested', 'CLAUDE.md'), 'utf8'), /nested legacy rules/);
   });
 });
 

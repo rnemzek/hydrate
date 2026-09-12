@@ -47,7 +47,12 @@ const DOCS_ARTIFACTS = [
 // exists. Used both by `hydrate init`'s full scaffold and by
 // bin/postinstall.js, which auto-provisions this into a host project on
 // `npm install` without requiring a manual `hydrate init`.
-function scaffoldClaudeCommands(cwd) {
+//
+// `force: true` (UOW-HYDRATE-15) additionally overwrites any command file
+// that already exists but doesn't match the current template render — the
+// same "greenfield reset" intent as CLAUDE.md's --force policy, applied to
+// the command templates.
+function scaffoldClaudeCommands(cwd, { force = false } = {}) {
   const projectName = path.basename(cwd);
   const created = [];
 
@@ -58,9 +63,20 @@ function scaffoldClaudeCommands(cwd) {
 
   for (const { name, label } of CLAUDE_COMMANDS) {
     const filePath = path.join(claudeCommandsDir, name);
-    if (!fs.existsSync(filePath)) {
+    const exists = fs.existsSync(filePath);
+
+    if (!exists) {
       fs.writeFileSync(filePath, renderTemplate(path.join('.claude', 'commands', name), { PROJECT_NAME: projectName }), 'utf8');
       created.push({ path: filePath, label });
+      continue;
+    }
+
+    if (force) {
+      const rendered = renderTemplate(path.join('.claude', 'commands', name), { PROJECT_NAME: projectName });
+      if (fs.readFileSync(filePath, 'utf8') !== rendered) {
+        fs.writeFileSync(filePath, rendered, 'utf8');
+        created.push({ path: filePath, label: label.replace(/^Created/, 'Updated') });
+      }
     }
   }
 
@@ -70,9 +86,16 @@ function scaffoldClaudeCommands(cwd) {
 // Idempotently writes the canonical hydrate scaffold — CLAUDE.md plus the
 // 5-artifact .hydrate/ journal layout (and .hydrate/archive/) — from
 // templates/, skipping any file that already exists. Returns only the files
-// it actually created, so callers can report exactly what changed instead of
-// re-deriving it from disk.
-function scaffold(cwd) {
+// it actually created/updated (plus any guard entries — see below), so
+// callers can report exactly what changed instead of re-deriving it from
+// disk.
+//
+// `force: true` (UOW-HYDRATE-15, "Greenfield Harness Reset") wholesale-resets
+// CLAUDE.md and the .claude/commands/ templates even when they already carry
+// unmanaged legacy content — everything under `.hydrate/` (journals,
+// archive, ROADMAP.md, the active canvas) is never touched by `force`
+// regardless; it only ever governs the two template surfaces above.
+function scaffold(cwd, { force = false } = {}) {
   const projectName = path.basename(cwd);
   const created = [];
 
@@ -87,20 +110,30 @@ function scaffold(cwd) {
   }
 
   // 1. Operating Rules & AI Execution Protocol, injected as a delimited
-  // managed block (UOW-HYDRATE-14 Item 1.1) so a brownfield CLAUDE.md with
-  // its own pre-existing content gets Hydrate's rules appended rather than
-  // being skipped outright or clobbered.
+  // managed block (UOW-HYDRATE-14 Item 1.1). A brownfield CLAUDE.md (no
+  // markers) is left untouched with a guard entry unless `force` is set, in
+  // which case it's wholesale-replaced (UOW-HYDRATE-15) — no more silent
+  // auto-append into a file the operator never opted into managing.
   const claudePath = path.join(cwd, 'CLAUDE.md');
   const existingClaude = fs.existsSync(claudePath) ? fs.readFileSync(claudePath, 'utf8') : null;
   const claudeBody = renderTemplate('CLAUDE.md', { PROJECT_NAME: projectName });
-  const nextClaude = applyManagedBlock(existingClaude, claudeBody, getPackageVersion());
-  if (existingClaude !== nextClaude) {
+  const nextClaude = applyManagedBlock(existingClaude, claudeBody, getPackageVersion(), { force });
+
+  if (nextClaude === null) {
+    created.push({
+      path: claudePath,
+      label: "CLAUDE.md has unmanaged content and no Hydrate markers — run 'hydrate init --force' to reset it. Left untouched.",
+      guard: true
+    });
+  } else if (existingClaude !== nextClaude) {
     fs.writeFileSync(claudePath, nextClaude, 'utf8');
     created.push({
       path: claudePath,
       label: existingClaude === null
         ? 'Created CLAUDE.md (Operating Rules & AI Execution Protocol)'
-        : 'Updated CLAUDE.md (Hydrate Managed Block refreshed)'
+        : force
+          ? 'Reset CLAUDE.md (--force: unmanaged legacy content replaced with the managed block)'
+          : 'Updated CLAUDE.md (Hydrate Managed Block refreshed)'
     });
   }
 
@@ -114,7 +147,7 @@ function scaffold(cwd) {
   }
 
   // 7-18. Zero-touch /hydrate-* slash command definitions
-  created.push(...scaffoldClaudeCommands(cwd));
+  created.push(...scaffoldClaudeCommands(cwd, { force }));
 
   // 19-20. docs/ architecture map + decision journal
   const docsDir = path.join(cwd, 'docs');
@@ -133,11 +166,12 @@ function scaffold(cwd) {
   return created;
 }
 
-function runInit() {
+function runInit(options = []) {
   const cwd = process.cwd();
-  const created = scaffold(cwd);
+  const force = options.includes('--force') || options.includes('-f');
+  const created = scaffold(cwd, { force });
 
-  created.forEach(({ label }) => console.log(`  ✔ ${label}`));
+  created.forEach(({ label, guard }) => console.log(`  ${guard ? '⚠' : '✔'} ${label}`));
 
   console.log(`
 💧 @nemzilla/hydrate Harness Initialized!

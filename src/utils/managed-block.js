@@ -19,11 +19,19 @@ function hasManagedBlock(content) {
 
 // Returns the next full file content with `body` (tagged with `version`)
 // applied as the managed block:
-//   - no existing content            -> file becomes just the block
-//   - existing content, no markers   -> block is appended to the bottom
+//   - no existing content             -> file becomes just the block
 //   - existing content, markers found -> only the delimited text is replaced
-// Everything outside the markers is preserved byte-for-byte.
-function applyManagedBlock(content, body, version) {
+//     (everything outside the markers is preserved byte-for-byte)
+//   - existing content, no markers    -> a "greenfield reset" is required:
+//       - force: false (default) -> returns null (guard: caller must not
+//         write, and should tell the operator to re-run with --force)
+//       - force: true            -> wholesale-replaces the file with just
+//         the block, discarding the unmarked legacy content
+// (UOW-HYDRATE-15: the unmarked case used to auto-append instead of
+// guarding — silently merging Hydrate's rules into a file the operator
+// never opted into managing was surprising. Appending is no longer an
+// available outcome; it's guard-by-default or full reset via --force.)
+function applyManagedBlock(content, body, version, { force = false } = {}) {
   const block = renderManagedBlock(body, version);
 
   if (!content || !content.trim()) {
@@ -34,7 +42,13 @@ function applyManagedBlock(content, body, version) {
     return content.replace(BLOCK_RE, block);
   }
 
-  return `${content.trimEnd()}\n\n${block}\n`;
+  return force ? `${block}\n` : null;
+}
+
+// True when `content` is non-empty, unmarked legacy content that
+// `applyManagedBlock()` will refuse to touch without `{ force: true }`.
+function needsGreenfieldReset(content) {
+  return Boolean(content && content.trim()) && !hasManagedBlock(content);
 }
 
 // Removes the managed block entirely (used by `hydrate eject`). Returns the
@@ -49,4 +63,4 @@ function stripManagedBlock(content) {
   return { content: stripped ? `${stripped}\n` : '', removed: true };
 }
 
-module.exports = { renderManagedBlock, hasManagedBlock, applyManagedBlock, stripManagedBlock, BLOCK_RE };
+module.exports = { renderManagedBlock, hasManagedBlock, applyManagedBlock, stripManagedBlock, needsGreenfieldReset, BLOCK_RE };

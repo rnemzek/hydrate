@@ -86,7 +86,7 @@ test('scaffold() creates CLAUDE.md, the 5-artifact .hydrate/ layout, .hydrate/ar
   });
 });
 
-test('scaffold() is idempotent for every artifact except CLAUDE.md, which gets the Hydrate managed block appended', () => {
+test('scaffold() is idempotent for every artifact, and guards (does not touch) an unmarked CLAUDE.md', () => {
   withTempDir((dir) => {
     fs.mkdirSync(path.join(dir, '.hydrate'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'CLAUDE.md'), 'custom rules');
@@ -95,22 +95,40 @@ test('scaffold() is idempotent for every artifact except CLAUDE.md, which gets t
 
     const created = scaffold(dir);
 
-    // CLAUDE.md is intentionally NOT skip-if-exists (UOW-HYDRATE-14 Item 1.1):
-    // a brownfield CLAUDE.md gets the delimited Hydrate managed block
-    // appended so its custom content survives untouched.
-    assert.ok(created.some((c) => c.path.endsWith('CLAUDE.md')));
+    // CLAUDE.md is intentionally NOT skip-if-exists (UOW-HYDRATE-14 Item 1.1)
+    // — but a brownfield CLAUDE.md with no markers is guarded, not appended
+    // to (UOW-HYDRATE-15): a "greenfield reset required" entry is returned
+    // and the file itself is left completely untouched.
+    const claudeEntry = created.find((c) => c.path.endsWith('CLAUDE.md'));
+    assert.ok(claudeEntry);
+    assert.equal(claudeEntry.guard, true);
     assert.ok(!created.some((c) => c.path.endsWith(path.join('.hydrate', 'CURRENT_UOW.md'))));
     assert.ok(!created.some((c) => c.path.endsWith(path.join('.hydrate', 'ROADMAP.md'))));
 
-    const claude = fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8');
-    assert.match(claude, /^custom rules/);
-    assert.match(claude, /BEGIN HYDRATE MANAGED BLOCK/);
+    assert.equal(fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8'), 'custom rules');
     assert.equal(fs.readFileSync(path.join(dir, '.hydrate', 'CURRENT_UOW.md'), 'utf8'), 'custom canvas');
     assert.equal(fs.readFileSync(path.join(dir, '.hydrate', 'ROADMAP.md'), 'utf8'), 'custom roadmap');
   });
 });
 
-test('scaffold() run twice on the same repo does not duplicate or change the CLAUDE.md managed block', () => {
+test('scaffold({ force: true }) wholesale-resets an unmarked CLAUDE.md, discarding the legacy content', () => {
+  withTempDir((dir) => {
+    fs.mkdirSync(path.join(dir, '.hydrate'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'CLAUDE.md'), 'custom rules');
+
+    const created = scaffold(dir, { force: true });
+
+    const claudeEntry = created.find((c) => c.path.endsWith('CLAUDE.md'));
+    assert.ok(claudeEntry);
+    assert.ok(!claudeEntry.guard);
+
+    const claude = fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8');
+    assert.doesNotMatch(claude, /custom rules/);
+    assert.match(claude, /BEGIN HYDRATE MANAGED BLOCK/);
+  });
+});
+
+test('scaffold() run twice on the same repo does not duplicate or change an already-managed CLAUDE.md', () => {
   withTempDir((dir) => {
     scaffold(dir);
     const first = fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8');
@@ -122,15 +140,17 @@ test('scaffold() run twice on the same repo does not duplicate or change the CLA
   });
 });
 
-test('scaffold() only creates the files that are missing, refreshing CLAUDE.md\'s managed block', () => {
+test('scaffold() only creates the files that are missing, guarding an unmarked pre-existing CLAUDE.md', () => {
   withTempDir((dir) => {
     fs.writeFileSync(path.join(dir, 'CLAUDE.md'), 'already here');
 
     const created = scaffold(dir);
 
     assert.equal(created.length, 21);
-    assert.ok(created.some((c) => c.path.endsWith('CLAUDE.md')));
-    assert.match(fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8'), /^already here/);
+    const claudeEntry = created.find((c) => c.path.endsWith('CLAUDE.md'));
+    assert.ok(claudeEntry);
+    assert.equal(claudeEntry.guard, true);
+    assert.equal(fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8'), 'already here');
     for (const file of HYDRATE_FILES) {
       assert.ok(fs.existsSync(path.join(dir, '.hydrate', file)));
     }
@@ -154,6 +174,62 @@ test('scaffold() does not overwrite an existing slash command file', () => {
     assert.equal(fs.readFileSync(path.join(dir, '.claude', 'commands', 'hydrate-checkup.md'), 'utf8'), 'custom command');
     assert.ok(fs.existsSync(path.join(dir, '.claude', 'commands', 'hydrate-ingest.md')));
     assert.ok(fs.existsSync(path.join(dir, '.claude', 'commands', 'hydrate-context.md')));
+  });
+});
+
+test('scaffold({ force: true }) overwrites a customized slash command file to match the current template', () => {
+  withTempDir((dir) => {
+    fs.mkdirSync(path.join(dir, '.claude', 'commands'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.claude', 'commands', 'hydrate-checkup.md'), 'custom command');
+
+    const created = scaffold(dir, { force: true });
+
+    const entry = created.find((c) => c.path.endsWith(path.join('.claude', 'commands', 'hydrate-checkup.md')));
+    assert.ok(entry);
+    assert.match(entry.label, /^Updated/);
+    assert.notEqual(fs.readFileSync(path.join(dir, '.claude', 'commands', 'hydrate-checkup.md'), 'utf8'), 'custom command');
+  });
+});
+
+test('runInit(["--force"]) wholesale-resets an unmarked CLAUDE.md and prints the guard glyph for guarded entries', () => {
+  withTempDir((dir) => {
+    const originalCwd = process.cwd();
+    const logs = [];
+    const originalLog = console.log;
+    console.log = (msg) => logs.push(msg);
+
+    try {
+      process.chdir(dir);
+      fs.writeFileSync(path.join(dir, 'CLAUDE.md'), 'custom rules');
+      runInit(['--force']);
+    } finally {
+      console.log = originalLog;
+      process.chdir(originalCwd);
+    }
+
+    assert.doesNotMatch(fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8'), /custom rules/);
+    assert.match(logs.join('\n'), /Reset CLAUDE\.md/);
+  });
+});
+
+test('runInit() without --force prints the guard glyph and leaves an unmarked CLAUDE.md untouched', () => {
+  withTempDir((dir) => {
+    const originalCwd = process.cwd();
+    const logs = [];
+    const originalLog = console.log;
+    console.log = (msg) => logs.push(msg);
+
+    try {
+      process.chdir(dir);
+      fs.writeFileSync(path.join(dir, 'CLAUDE.md'), 'custom rules');
+      runInit();
+    } finally {
+      console.log = originalLog;
+      process.chdir(originalCwd);
+    }
+
+    assert.equal(fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8'), 'custom rules');
+    assert.match(logs.join('\n'), /⚠.*hydrate init --force/);
   });
 });
 

@@ -12,9 +12,17 @@ const GLOBAL_FLAGS = [
 const COMMANDS = {
   init: {
     summary: 'Scaffold the Hydrate harness (CLAUDE.md and the .hydrate/ journal files) in the current repo.',
-    usage: 'hydrate init',
-    options: [],
-    examples: ['hydrate init']
+    usage: 'hydrate init [--force|-f]',
+    whatItDoes: [
+      'Creates CLAUDE.md, the 5-artifact .hydrate/ journal layout, .hydrate/archive/, the .claude/commands/hydrate-*.md slash commands, and docs/ARCHITECTURE*.md — skipping any file that already exists.',
+      'If CLAUDE.md already carries the Hydrate managed block, refreshes only the text inside those markers.',
+      'If CLAUDE.md exists with no Hydrate markers, leaves it untouched and reports that --force is required (no silent merge).',
+      '--force wholesale-resets CLAUDE.md (discarding any unmarked legacy content) and overwrites every .claude/commands/hydrate-*.md to the current template — .hydrate/ journals, archive, and ROADMAP.md are never touched by --force.'
+    ],
+    options: [
+      ['-f, --force', 'Greenfield reset: replace an unmarked CLAUDE.md and overwrite .claude/commands/*.md templates. Never touches .hydrate/.']
+    ],
+    examples: ['hydrate init', 'hydrate init --force']
   },
   prompt: {
     summary: 'Sync active UOW payload to .hydrate/CURRENT_UOW.md.',
@@ -180,20 +188,23 @@ const COMMANDS = {
   },
   sync: {
     summary: 'Align .claude/commands/*.md templates and the CLAUDE.md managed block to the running hydrate version.',
-    usage: 'hydrate sync [--recursive|-r] [--path <dir>]',
+    usage: 'hydrate sync [--recursive|-r] [--force|-f] [--path <dir>]',
     whenToRun: 'After upgrading hydrate, or any time you want a repo\'s slash-command templates and Hydrate CLAUDE.md rules brought current without touching .hydrate/ history.',
     whatItDoes: [
-      'Force-refreshes every .claude/commands/hydrate-*.md template to match the installed hydrate version.',
-      'Refreshes only the delimited Hydrate managed block inside CLAUDE.md, leaving any surrounding custom content untouched.',
-      'Bootstraps a quiet `hydrate init` in any target repo missing .hydrate/ instead of syncing nothing.',
+      'Force-refreshes every .claude/commands/hydrate-*.md template to match the installed hydrate version, regardless of --force.',
+      'If CLAUDE.md already carries the Hydrate managed block, refreshes only the delimited text — any surrounding custom content is untouched.',
+      'If CLAUDE.md has no Hydrate markers, leaves it untouched and reports that a greenfield reset (--force) is required, instead of guessing.',
+      '--force wholesale-replaces an unmarked CLAUDE.md with the clean managed-block template, discarding the legacy content.',
+      'Bootstraps a quiet `hydrate init` (passing --force through) in any target repo missing .hydrate/ instead of syncing nothing.',
       '--recursive scans downward from --path (default: cwd) for nested .git/package.json roots and syncs each one.',
-      'Never modifies .hydrate/ journals, archive, or CURRENT_UOW.md.'
+      'Never modifies .hydrate/ journals, archive, or CURRENT_UOW.md — with or without --force.'
     ],
     options: [
       ['-r, --recursive', 'Recursively sync every repo found beneath --path (default: cwd).'],
+      ['-f, --force', 'Greenfield reset: wholesale-replace an unmarked CLAUDE.md instead of leaving it untouched.'],
       ['--path <dir>', 'Root directory to sync (or scan from, with --recursive). Defaults to the current directory.']
     ],
-    examples: ['hydrate sync', 'hydrate sync --recursive', 'hydrate sync --recursive --path ~/Projects']
+    examples: ['hydrate sync', 'hydrate sync --recursive', 'hydrate sync --recursive --force --path ~/Projects']
   },
   update: {
     summary: 'Upgrade the installed @nemzilla/hydrate package and re-sync the current workspace.',

@@ -45,7 +45,7 @@ if (isLfgCommand) {
 } else {
   switch (command) {
     case 'init':
-      runInit();
+      runInit(rest);
       break;
 
     case 'prompt':
@@ -546,10 +546,11 @@ function findFlagValue(options, flag) {
 function handleSync(options = []) {
   const { cwd } = getPaths();
   const recursive = options.includes('--recursive') || options.includes('-r');
+  const force = options.includes('--force') || options.includes('-f');
   const targetPath = findFlagValue(options, '--path');
 
   console.log('\n💧 Hydrate Workspace Sync\n');
-  const results = runSync(cwd, { recursive, targetPath });
+  const results = runSync(cwd, { recursive, force, targetPath });
   console.log(`\n✔ Sync complete — ${results.length} repo${results.length === 1 ? '' : 's'} checked.\n`);
 }
 
