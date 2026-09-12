@@ -25,7 +25,10 @@ const CLAUDE_COMMANDS = [
   { name: 'hydrate-uow.md', label: 'Created .claude/commands/hydrate-uow.md (/hydrate-uow slash command)' },
   { name: 'hydrate-artifacts.md', label: 'Created .claude/commands/hydrate-artifacts.md (/hydrate-artifacts slash command)' },
   { name: 'hydrate-arch-sync.md', label: 'Created .claude/commands/hydrate-arch-sync.md (/hydrate-arch-sync slash command)' },
-  { name: 'hydrate-digest.md', label: 'Created .claude/commands/hydrate-digest.md (/hydrate-digest slash command)' }
+  { name: 'hydrate-digest.md', label: 'Created .claude/commands/hydrate-digest.md (/hydrate-digest slash command)' },
+  { name: 'hydrate-complete.md', label: 'Created .claude/commands/hydrate-complete.md (/hydrate-complete slash command)' },
+  { name: 'hydrate-check.md', label: 'Created .claude/commands/hydrate-check.md (/hydrate-check slash command)' },
+  { name: 'hydrate-export-portfolio.md', label: 'Created .claude/commands/hydrate-export-portfolio.md (/hydrate-export-portfolio slash command)' }
 ];
 
 // docs/ artifacts scaffolded alongside .hydrate/ — the architecture map
@@ -96,10 +99,10 @@ function scaffold(cwd) {
     }
   }
 
-  // 7-15. Zero-touch /hydrate-* slash command definitions
+  // 7-18. Zero-touch /hydrate-* slash command definitions
   created.push(...scaffoldClaudeCommands(cwd));
 
-  // 16-17. docs/ architecture map + decision journal
+  // 19-20. docs/ architecture map + decision journal
   const docsDir = path.join(cwd, 'docs');
   if (!fs.existsSync(docsDir)) {
     fs.mkdirSync(docsDir, { recursive: true });

@@ -23,7 +23,10 @@ function withTempDir(fn) {
 const SLASH_COMMANDS = [
   { file: 'hydrate-checkup.md', cliVerb: 'hydrate checkup' },
   { file: 'hydrate-ingest.md', cliVerb: 'hydrate ingest --yes' },
-  { file: 'hydrate-context.md', cliVerb: 'hydrate context --clip' }
+  { file: 'hydrate-context.md', cliVerb: 'hydrate context --clip' },
+  { file: 'hydrate-complete.md', cliVerb: 'hydrate complete' },
+  { file: 'hydrate-check.md', cliVerb: 'hydrate check' },
+  { file: 'hydrate-export-portfolio.md', cliVerb: 'hydrate export-portfolio' }
 ];
 
 // templates/.claude/commands/*.md.template ---------------------------------
@@ -51,7 +54,7 @@ test('renderTemplate() leaves slash command templates untouched (no placeholders
 
 // scaffold() wiring for .claude/commands/ ----------------------------------
 
-test('scaffold() provisions .claude/commands/ with all three /hydrate-* slash commands', () => {
+test('scaffold() provisions .claude/commands/ with every /hydrate-* slash command', () => {
   withTempDir((dir) => {
     const created = scaffold(dir);
 
@@ -64,6 +67,9 @@ test('scaffold() provisions .claude/commands/ with all three /hydrate-* slash co
     assert.ok(created.some((c) => c.label.includes('/hydrate-checkup')));
     assert.ok(created.some((c) => c.label.includes('/hydrate-ingest')));
     assert.ok(created.some((c) => c.label.includes('/hydrate-context')));
+    assert.ok(created.some((c) => c.label.includes('/hydrate-complete')));
+    assert.ok(created.some((c) => c.label.includes('/hydrate-check')));
+    assert.ok(created.some((c) => c.label.includes('/hydrate-export-portfolio')));
   });
 });
 

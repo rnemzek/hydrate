@@ -21,7 +21,7 @@ function withTempDir(fn) {
 }
 
 const HYDRATE_FILES = ['CURRENT_UOW.md', 'ROADMAP.md', 'PROJECT_JOURNAL.md', 'DEV_JOURNAL.md', 'ARCHITECT_JOURNAL.md'];
-const CLAUDE_COMMAND_FILES = ['hydrate.md', 'hydrate-checkup.md', 'hydrate-ingest.md', 'hydrate-context.md', 'hydrate-help.md', 'hydrate-uow.md', 'hydrate-artifacts.md', 'hydrate-arch-sync.md', 'hydrate-digest.md'];
+const CLAUDE_COMMAND_FILES = ['hydrate.md', 'hydrate-checkup.md', 'hydrate-ingest.md', 'hydrate-context.md', 'hydrate-help.md', 'hydrate-uow.md', 'hydrate-artifacts.md', 'hydrate-arch-sync.md', 'hydrate-digest.md', 'hydrate-complete.md', 'hydrate-check.md', 'hydrate-export-portfolio.md'];
 const DOCS_FILES = ['ARCHITECTURE.md', 'ARCHITECTURE_JOURNAL.md'];
 
 // src/templates.js -------------------------------------------------------
@@ -49,7 +49,7 @@ test('scaffold() creates CLAUDE.md, the 5-artifact .hydrate/ layout, .hydrate/ar
   withTempDir((dir) => {
     const created = scaffold(dir);
 
-    assert.equal(created.length, 17);
+    assert.equal(created.length, 20);
     assert.ok(fs.existsSync(path.join(dir, 'CLAUDE.md')));
     assert.ok(fs.existsSync(path.join(dir, '.hydrate', 'archive')));
     for (const file of HYDRATE_FILES) {
@@ -110,7 +110,7 @@ test('scaffold() only creates the files that are missing', () => {
 
     const created = scaffold(dir);
 
-    assert.equal(created.length, 16);
+    assert.equal(created.length, 19);
     assert.ok(!created.some((c) => c.path.endsWith('CLAUDE.md')));
     for (const file of HYDRATE_FILES) {
       assert.ok(fs.existsSync(path.join(dir, '.hydrate', file)));
@@ -169,6 +169,9 @@ test('runInit() prints a checklist of created files and next steps', () => {
     assert.match(output, /Created \.claude\/commands\/hydrate-artifacts\.md/);
     assert.match(output, /Created \.claude\/commands\/hydrate-arch-sync\.md/);
     assert.match(output, /Created \.claude\/commands\/hydrate-digest\.md/);
+    assert.match(output, /Created \.claude\/commands\/hydrate-complete\.md/);
+    assert.match(output, /Created \.claude\/commands\/hydrate-check\.md/);
+    assert.match(output, /Created \.claude\/commands\/hydrate-export-portfolio\.md/);
     assert.match(output, /Created docs\/ARCHITECTURE\.md/);
     assert.match(output, /Created docs\/ARCHITECTURE_JOURNAL\.md/);
     assert.match(output, /hydrate-checkup/);
