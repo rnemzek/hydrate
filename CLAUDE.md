@@ -55,7 +55,7 @@
 
 ### 5.4 Autonomous Fast-Start Triggers
 - **Local to this repo only — deliberately excluded from `templates/CLAUDE.md.template` so downstream `hydrate init` users receive a clean baseline.**
-- When prompted with **"LFG"**, **"Andiamo"**, **"Vámonos"**, **"Vamos"**, **"Allons-y"**, **"Lass uns gehen"**, **"Make it so"**, or **"Execute active UOW"**, immediately parse `.hydrate/CURRENT_UOW.md`, begin implementation, verify via `npm test`, log completions to `.hydrate/*_JOURNAL.md` files, and commit upon clean test pass without requesting intermediate setup approvals.
+- When prompted with **"LFG"**, **"Andiamo"**, **"Vámonos"**, **"Vamos"**, **"Allons-y"**, **"Lass uns gehen"**, **"Make it so"**, or **"Execute active UOW"**, check the system clipboard FIRST (`hydrate lfg --yes`, which runs the state checkup then applies a clipboard UOW payload non-interactively if one is present, archiving any active UOW first). If the clipboard holds no valid UOW payload, `hydrate lfg` falls back to `.hydrate/CURRENT_UOW.md` unchanged. Either way, begin implementation immediately, verify via `npm test`, log completions to `.hydrate/*_JOURNAL.md` files, and commit upon clean test pass without requesting intermediate setup approvals.
 
 ## 6. Architectural Logging & Journal Protocol
 - When conducting design reviews, trade-off analyses, or sequence mapping, format outputs into **Architecture Journal Digest** blocks.

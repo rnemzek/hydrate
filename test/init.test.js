@@ -21,7 +21,7 @@ function withTempDir(fn) {
 }
 
 const HYDRATE_FILES = ['CURRENT_UOW.md', 'ROADMAP.md', 'PROJECT_JOURNAL.md', 'DEV_JOURNAL.md', 'ARCHITECT_JOURNAL.md'];
-const CLAUDE_COMMAND_FILES = ['hydrate.md', 'hydrate-checkup.md', 'hydrate-ingest.md', 'hydrate-context.md', 'hydrate-help.md', 'hydrate-uow.md', 'hydrate-artifacts.md', 'hydrate-arch-sync.md', 'hydrate-digest.md', 'hydrate-complete.md', 'hydrate-check.md', 'hydrate-export-portfolio.md'];
+const CLAUDE_COMMAND_FILES = ['hydrate.md', 'hydrate-checkup.md', 'hydrate-ingest.md', 'hydrate-context.md', 'hydrate-help.md', 'hydrate-uow.md', 'hydrate-artifacts.md', 'hydrate-arch-sync.md', 'hydrate-digest.md', 'hydrate-complete.md', 'hydrate-check.md', 'hydrate-export-portfolio.md', 'hydrate-lfg.md'];
 const DOCS_FILES = ['ARCHITECTURE.md', 'ARCHITECTURE_JOURNAL.md'];
 
 // src/templates.js -------------------------------------------------------
@@ -49,7 +49,7 @@ test('scaffold() creates CLAUDE.md, the 5-artifact .hydrate/ layout, .hydrate/ar
   withTempDir((dir) => {
     const created = scaffold(dir);
 
-    assert.equal(created.length, 20);
+    assert.equal(created.length, 21);
     assert.ok(fs.existsSync(path.join(dir, 'CLAUDE.md')));
     assert.ok(fs.existsSync(path.join(dir, '.hydrate', 'archive')));
     for (const file of HYDRATE_FILES) {
@@ -86,7 +86,7 @@ test('scaffold() creates CLAUDE.md, the 5-artifact .hydrate/ layout, .hydrate/ar
   });
 });
 
-test('scaffold() is idempotent: never overwrites existing files', () => {
+test('scaffold() is idempotent for every artifact except CLAUDE.md, which gets the Hydrate managed block appended', () => {
   withTempDir((dir) => {
     fs.mkdirSync(path.join(dir, '.hydrate'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'CLAUDE.md'), 'custom rules');
@@ -95,23 +95,42 @@ test('scaffold() is idempotent: never overwrites existing files', () => {
 
     const created = scaffold(dir);
 
-    assert.ok(!created.some((c) => c.path.endsWith('CLAUDE.md')));
+    // CLAUDE.md is intentionally NOT skip-if-exists (UOW-HYDRATE-14 Item 1.1):
+    // a brownfield CLAUDE.md gets the delimited Hydrate managed block
+    // appended so its custom content survives untouched.
+    assert.ok(created.some((c) => c.path.endsWith('CLAUDE.md')));
     assert.ok(!created.some((c) => c.path.endsWith(path.join('.hydrate', 'CURRENT_UOW.md'))));
     assert.ok(!created.some((c) => c.path.endsWith(path.join('.hydrate', 'ROADMAP.md'))));
-    assert.equal(fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8'), 'custom rules');
+
+    const claude = fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8');
+    assert.match(claude, /^custom rules/);
+    assert.match(claude, /BEGIN HYDRATE MANAGED BLOCK/);
     assert.equal(fs.readFileSync(path.join(dir, '.hydrate', 'CURRENT_UOW.md'), 'utf8'), 'custom canvas');
     assert.equal(fs.readFileSync(path.join(dir, '.hydrate', 'ROADMAP.md'), 'utf8'), 'custom roadmap');
   });
 });
 
-test('scaffold() only creates the files that are missing', () => {
+test('scaffold() run twice on the same repo does not duplicate or change the CLAUDE.md managed block', () => {
+  withTempDir((dir) => {
+    scaffold(dir);
+    const first = fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8');
+
+    const created = scaffold(dir);
+
+    assert.ok(!created.some((c) => c.path.endsWith('CLAUDE.md')));
+    assert.equal(fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8'), first);
+  });
+});
+
+test('scaffold() only creates the files that are missing, refreshing CLAUDE.md\'s managed block', () => {
   withTempDir((dir) => {
     fs.writeFileSync(path.join(dir, 'CLAUDE.md'), 'already here');
 
     const created = scaffold(dir);
 
-    assert.equal(created.length, 19);
-    assert.ok(!created.some((c) => c.path.endsWith('CLAUDE.md')));
+    assert.equal(created.length, 21);
+    assert.ok(created.some((c) => c.path.endsWith('CLAUDE.md')));
+    assert.match(fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8'), /^already here/);
     for (const file of HYDRATE_FILES) {
       assert.ok(fs.existsSync(path.join(dir, '.hydrate', file)));
     }
@@ -172,6 +191,7 @@ test('runInit() prints a checklist of created files and next steps', () => {
     assert.match(output, /Created \.claude\/commands\/hydrate-complete\.md/);
     assert.match(output, /Created \.claude\/commands\/hydrate-check\.md/);
     assert.match(output, /Created \.claude\/commands\/hydrate-export-portfolio\.md/);
+    assert.match(output, /Created \.claude\/commands\/hydrate-lfg\.md/);
     assert.match(output, /Created docs\/ARCHITECTURE\.md/);
     assert.match(output, /Created docs\/ARCHITECTURE_JOURNAL\.md/);
     assert.match(output, /hydrate-checkup/);

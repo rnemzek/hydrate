@@ -177,6 +177,67 @@ const COMMANDS = {
     ],
     examples: ['hydrate lfg', 'hydrate lfg --yes'],
     hidden: true
+  },
+  sync: {
+    summary: 'Align .claude/commands/*.md templates and the CLAUDE.md managed block to the running hydrate version.',
+    usage: 'hydrate sync [--recursive|-r] [--path <dir>]',
+    whenToRun: 'After upgrading hydrate, or any time you want a repo\'s slash-command templates and Hydrate CLAUDE.md rules brought current without touching .hydrate/ history.',
+    whatItDoes: [
+      'Force-refreshes every .claude/commands/hydrate-*.md template to match the installed hydrate version.',
+      'Refreshes only the delimited Hydrate managed block inside CLAUDE.md, leaving any surrounding custom content untouched.',
+      'Bootstraps a quiet `hydrate init` in any target repo missing .hydrate/ instead of syncing nothing.',
+      '--recursive scans downward from --path (default: cwd) for nested .git/package.json roots and syncs each one.',
+      'Never modifies .hydrate/ journals, archive, or CURRENT_UOW.md.'
+    ],
+    options: [
+      ['-r, --recursive', 'Recursively sync every repo found beneath --path (default: cwd).'],
+      ['--path <dir>', 'Root directory to sync (or scan from, with --recursive). Defaults to the current directory.']
+    ],
+    examples: ['hydrate sync', 'hydrate sync --recursive', 'hydrate sync --recursive --path ~/Projects']
+  },
+  update: {
+    summary: 'Upgrade the installed @nemzilla/hydrate package and re-sync the current workspace.',
+    usage: 'hydrate update [--local|-l]',
+    whenToRun: 'When `hydrate checkup` reports a newer version is available.',
+    whatItDoes: [
+      'Runs `npm install -g @nemzilla/hydrate` (or a local install with --local).',
+      'Immediately re-runs `hydrate sync` on the current repo so templates reflect the upgraded version.'
+    ],
+    options: [
+      ['-l, --local', 'Update the local project dependency instead of the global install.']
+    ],
+    examples: ['hydrate update', 'hydrate update --local']
+  },
+  eject: {
+    summary: 'Remove .hydrate/, .claude/commands/hydrate-*.md, and the CLAUDE.md managed block from a repo.',
+    usage: 'hydrate eject [--recursive|-r] [--path <dir>] [--dry-run] [--force|-f]',
+    whenToRun: 'When you want to fully remove the Hydrate harness from a repo (or a whole directory tree).',
+    whatItDoes: [
+      'Deletes the .hydrate/ directory (journals, archive, active canvas).',
+      'Deletes every .claude/commands/hydrate-*.md slash command file.',
+      'Strips just the delimited Hydrate managed block from CLAUDE.md (deletes the file if nothing else remains).',
+      'Prompts for confirmation unless --force is passed; --dry-run previews the plan without removing anything.',
+      '--recursive scans downward from --path (default: cwd) and ejects from every repo found.'
+    ],
+    options: [
+      ['-r, --recursive', 'Eject from every repo found beneath --path (default: cwd).'],
+      ['--path <dir>', 'Root directory to eject from (or scan from, with --recursive). Defaults to the current directory.'],
+      ['--dry-run', 'Preview exactly what would be removed without deleting anything.'],
+      ['-f, --force', 'Skip the confirmation prompt.']
+    ],
+    examples: ['hydrate eject --dry-run', 'hydrate eject --force', 'hydrate eject --recursive --dry-run']
+  },
+  hook: {
+    summary: 'Install/remove a shell hook that auto-runs `hydrate init` after every `git init`.',
+    usage: 'hydrate hook <enable|disable|status>',
+    whenToRun: 'Once, to have every future `git init` on your machine automatically bootstrap the Hydrate harness.',
+    whatItDoes: [
+      'enable: installs a `git` shell-function wrapper into your shell rc (~/.zshrc or ~/.bashrc) that runs `hydrate init --quiet` after `git init`.',
+      'disable: removes that wrapper.',
+      'status: reports whether the wrapper is currently installed.'
+    ],
+    options: [],
+    examples: ['hydrate hook enable', 'hydrate hook status', 'hydrate hook disable']
   }
 };
 
@@ -272,6 +333,10 @@ function printGlobalHelp() {
   console.log('  $ hydrate complete --force');
   console.log('  $ hydrate uow list');
   console.log('  $ hydrate artifacts');
+  console.log('  $ hydrate sync --recursive');
+  console.log('  $ hydrate update');
+  console.log('  $ hydrate eject --dry-run');
+  console.log('  $ hydrate hook enable');
   console.log('  $ hydrate <command> --help');
   console.log('  $ hydrate --version');
   console.log('');

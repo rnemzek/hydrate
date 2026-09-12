@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const { loadTemplate, renderTemplate } = require('./templates');
+const { applyManagedBlock } = require('./utils/managed-block');
+const { getPackageVersion } = require('./utils/pkg');
 
 // The 5 journal artifacts rendered into .hydrate/ on scaffold, each paired
 // with the console label printed when it's actually created.
@@ -28,7 +30,8 @@ const CLAUDE_COMMANDS = [
   { name: 'hydrate-digest.md', label: 'Created .claude/commands/hydrate-digest.md (/hydrate-digest slash command)' },
   { name: 'hydrate-complete.md', label: 'Created .claude/commands/hydrate-complete.md (/hydrate-complete slash command)' },
   { name: 'hydrate-check.md', label: 'Created .claude/commands/hydrate-check.md (/hydrate-check slash command)' },
-  { name: 'hydrate-export-portfolio.md', label: 'Created .claude/commands/hydrate-export-portfolio.md (/hydrate-export-portfolio slash command)' }
+  { name: 'hydrate-export-portfolio.md', label: 'Created .claude/commands/hydrate-export-portfolio.md (/hydrate-export-portfolio slash command)' },
+  { name: 'hydrate-lfg.md', label: 'Created .claude/commands/hydrate-lfg.md (/hydrate-lfg slash command)' }
 ];
 
 // docs/ artifacts scaffolded alongside .hydrate/ — the architecture map
@@ -83,11 +86,22 @@ function scaffold(cwd) {
     fs.mkdirSync(archiveDir, { recursive: true });
   }
 
-  // 1. Operating Rules & AI Execution Protocol
+  // 1. Operating Rules & AI Execution Protocol, injected as a delimited
+  // managed block (UOW-HYDRATE-14 Item 1.1) so a brownfield CLAUDE.md with
+  // its own pre-existing content gets Hydrate's rules appended rather than
+  // being skipped outright or clobbered.
   const claudePath = path.join(cwd, 'CLAUDE.md');
-  if (!fs.existsSync(claudePath)) {
-    fs.writeFileSync(claudePath, renderTemplate('CLAUDE.md', { PROJECT_NAME: projectName }), 'utf8');
-    created.push({ path: claudePath, label: 'Created CLAUDE.md (Operating Rules & AI Execution Protocol)' });
+  const existingClaude = fs.existsSync(claudePath) ? fs.readFileSync(claudePath, 'utf8') : null;
+  const claudeBody = renderTemplate('CLAUDE.md', { PROJECT_NAME: projectName });
+  const nextClaude = applyManagedBlock(existingClaude, claudeBody, getPackageVersion());
+  if (existingClaude !== nextClaude) {
+    fs.writeFileSync(claudePath, nextClaude, 'utf8');
+    created.push({
+      path: claudePath,
+      label: existingClaude === null
+        ? 'Created CLAUDE.md (Operating Rules & AI Execution Protocol)'
+        : 'Updated CLAUDE.md (Hydrate Managed Block refreshed)'
+    });
   }
 
   // 2-6. The 5-artifact .hydrate/ journal layout
@@ -135,4 +149,4 @@ function runInit() {
 `);
 }
 
-module.exports = { runInit, scaffold, scaffoldClaudeCommands };
+module.exports = { runInit, scaffold, scaffoldClaudeCommands, CLAUDE_COMMANDS, HYDRATE_ARTIFACTS, DOCS_ARTIFACTS };

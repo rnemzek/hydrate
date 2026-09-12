@@ -14,3 +14,4 @@
 - [x] **[UOW-HYDRATE-11]** System Architecture Maintenance & Decision Logging Protocol — 2026-09-01 | Pass: 211/211 tests
 - [x] **[UOW-HYDRATE-12]** Enrich Context Compiler with System Architecture & Rule Artifacts — 2026-09-01 | Pass: 219/219 tests
 - [x] **[UOW-HYDRATE-13]** Align CLI Subcommands with Slash Command Templates — 2026-09-12 | Pass: 219/219 tests
+- [x] **[UOW-HYDRATE-14]** Global Lifecycle Engine & Workspace Sync — 2026-09-12 | Pass: 297/297 tests

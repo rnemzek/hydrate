@@ -13,6 +13,12 @@ const { buildPortfolio } = require('../src/commands/export-portfolio');
 const { runIngest } = require('../src/commands/ingest');
 const { listUows, getLastUow, getUowById, formatUowList } = require('../src/commands/uow');
 const { buildArtifactsReport } = require('../src/commands/artifacts');
+const { runSync } = require('../src/commands/sync');
+const { runUpdate } = require('../src/commands/update');
+const { runEject } = require('../src/commands/eject');
+const { runHook } = require('../src/commands/hook');
+const { checkVersionDrift, formatDriftBanner } = require('../src/utils/version-check');
+const { getPackageVersion } = require('../src/utils/pkg');
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -83,6 +89,22 @@ if (isLfgCommand) {
 
     case 'artifacts':
       handleArtifacts();
+      break;
+
+    case 'sync':
+      handleSync(rest);
+      break;
+
+    case 'update':
+      handleUpdate(rest);
+      break;
+
+    case 'eject':
+      handleEject(rest);
+      break;
+
+    case 'hook':
+      handleHook(rest);
       break;
 
     default:
@@ -373,10 +395,31 @@ function handleCheck() {
   process.exit(result.ok ? 0 : 1);
 }
 
+// Update nags only render for a real interactive terminal session — a
+// spawned/piped invocation (`isTTY` false, e.g. every CLI-level test, or a
+// script capturing output) never triggers the npm registry lookup. This is
+// the same convention tools like npm's own update-notifier use to stay
+// silent in CI/non-interactive contexts, and it keeps `hydrate checkup`
+// fully offline/hermetic under `npm test`.
+function shouldCheckForUpdates() {
+  return Boolean(process.stdout.isTTY) && !process.env.CI;
+}
+
+function printUpdateBannerIfStale() {
+  if (!shouldCheckForUpdates()) return;
+  try {
+    const drift = checkVersionDrift(getPackageVersion());
+    if (drift.driftDetected) console.log(formatDriftBanner(drift));
+  } catch {
+    // Best-effort — the update check must never break `hydrate checkup`.
+  }
+}
+
 function handleCheckup() {
   const { cwd } = getPaths();
   const result = runCheckup(cwd);
   console.log(formatCheckupReport(result));
+  printUpdateBannerIfStale();
   process.exit(result.state === 'error' || result.state === 'broken-build' ? 1 : 0);
 }
 
@@ -489,6 +532,55 @@ function handleUow(options = []) {
 function handleArtifacts() {
   const { cwd } = getPaths();
   console.log(buildArtifactsReport(cwd));
+}
+
+// Shared `--flag <value>` / `--flag=<value>` reader used by the Track 2
+// lifecycle commands (sync/eject's `--path`).
+function findFlagValue(options, flag) {
+  const idx = options.findIndex((arg) => arg === flag);
+  if (idx !== -1 && options[idx + 1] !== undefined) return options[idx + 1];
+  const eqArg = options.find((arg) => arg.startsWith(`${flag}=`));
+  return eqArg ? eqArg.split('=').slice(1).join('=') : undefined;
+}
+
+function handleSync(options = []) {
+  const { cwd } = getPaths();
+  const recursive = options.includes('--recursive') || options.includes('-r');
+  const targetPath = findFlagValue(options, '--path');
+
+  console.log('\n💧 Hydrate Workspace Sync\n');
+  const results = runSync(cwd, { recursive, targetPath });
+  console.log(`\n✔ Sync complete — ${results.length} repo${results.length === 1 ? '' : 's'} checked.\n`);
+}
+
+function handleUpdate(options = []) {
+  const { cwd } = getPaths();
+  const global = !(options.includes('--local') || options.includes('-l'));
+
+  console.log('\n💧 Hydrate Self-Update\n');
+  const result = runUpdate(cwd, { global });
+  process.exit(result.code);
+}
+
+function handleEject(options = []) {
+  const { cwd } = getPaths();
+  const recursive = options.includes('--recursive') || options.includes('-r');
+  const dryRun = options.includes('--dry-run');
+  const force = options.includes('--force') || options.includes('-f');
+  const targetPath = findFlagValue(options, '--path');
+
+  runEject(cwd, { recursive, targetPath, dryRun, force })
+    .then((result) => process.exit(result.code))
+    .catch((err) => {
+      console.error(`❌ Error: ${err.message}`);
+      process.exit(1);
+    });
+}
+
+function handleHook(options = []) {
+  const action = options[0];
+  const result = runHook(action, {});
+  process.exit(result.code);
 }
 
 function outputChunkedArchitectPayload(payload, chunkSize) {
