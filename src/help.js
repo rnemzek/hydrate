@@ -315,6 +315,22 @@ function printGlobalHelp() {
   console.log(dim('  Use ') + green('hydrate clip') + dim(' any time to copy the active UOW payload to your clipboard.'));
   console.log('');
 
+  console.log(bold(yellow('🌱 GREENFIELD REPO BOOTSTRAP (RECOMMENDED)')));
+  console.log(dim('  Starting a brand-new project from an empty directory:'));
+  console.log(`  1. Initialize git.`);
+  console.log(`     ${green('$ git init')}`);
+  console.log(`  2. Scaffold the harness (CLAUDE.md, .hydrate/, .claude/commands/).`);
+  console.log(`     ${green('$ hydrate init')}`);
+  console.log(`  3. Edit ${green('.hydrate/ROADMAP.md')} — seed your high-level project vision`);
+  console.log(`     and initial milestone checklist.`);
+  console.log(`  4. Copy a token-dense context payload for the Lead Architect.`);
+  console.log(`     ${green('$ hydrate context --clip')}`);
+  console.log(`  5. Paste it into the Lead Architect (Gemini) chat, have it generate`);
+  console.log(`     the first UOW spec (${dim('UOW-01')}), then copy that spec to your clipboard.`);
+  console.log(`  6. Launch Claude Code and ingest the clipboard spec zero-touch.`);
+  console.log(`     ${green('$ claude --dangerously-skip-permissions')}  ${dim('then:')}  ${green('/hydrate-lfg')}  ${dim('(or: hydrate lfg --yes)')}`);
+  console.log('');
+
   console.log(bold(yellow('⚙️  HYDRATE ENGINE — TRIAD WORKFLOW GUIDE')));
   console.log(dim('  Boot sequence for starting a fresh context across the triad:'));
   console.log(dim('  Product Owner (you) · Lead Architect (Gemini) · Lead Developer (Claude Code).'));

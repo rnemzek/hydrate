@@ -26,7 +26,8 @@ const SLASH_COMMANDS = [
   { file: 'hydrate-context.md', cliVerb: 'hydrate context --clip' },
   { file: 'hydrate-complete.md', cliVerb: 'hydrate complete' },
   { file: 'hydrate-check.md', cliVerb: 'hydrate check' },
-  { file: 'hydrate-export-portfolio.md', cliVerb: 'hydrate export-portfolio' }
+  { file: 'hydrate-export-portfolio.md', cliVerb: 'hydrate export-portfolio' },
+  { file: 'hydrate-help.md', cliVerb: 'hydrate help' }
 ];
 
 // templates/.claude/commands/*.md.template ---------------------------------
@@ -71,6 +72,19 @@ test('scaffold() provisions .claude/commands/ with every /hydrate-* slash comman
     assert.ok(created.some((c) => c.label.includes('/hydrate-check')));
     assert.ok(created.some((c) => c.label.includes('/hydrate-export-portfolio')));
   });
+});
+
+// UOW-HYDRATE-HELP-GREENFIELD-WORKFLOW --------------------------------------
+
+test('hydrate-help.md.template mirrors the Greenfield Repo Bootstrap workflow steps', () => {
+  const content = loadTemplate(path.join('.claude', 'commands', 'hydrate-help.md'));
+  assert.match(content, /Greenfield Repo Bootstrap/i);
+  assert.match(content, /git init/);
+  assert.match(content, /hydrate init/);
+  assert.match(content, /\.hydrate\/ROADMAP\.md/);
+  assert.match(content, /hydrate context --clip/);
+  assert.match(content, /UOW-01/);
+  assert.match(content, /hydrate lfg --yes/);
 });
 
 test('scaffold() is idempotent for .claude/commands/: never overwrites an existing slash command', () => {

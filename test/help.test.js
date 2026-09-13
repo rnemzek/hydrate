@@ -51,3 +51,31 @@ test('hydrate --help and hydrate -h also print the Triad Workflow Guide banner',
     assert.match(result.stdout, /HYDRATE ENGINE — TRIAD WORKFLOW GUIDE/);
   }
 });
+
+// UOW-HYDRATE-HELP-GREENFIELD-WORKFLOW --------------------------------------
+
+test('hydrate help/--help/-h all print the Greenfield Repo Bootstrap section with all 6 steps', () => {
+  for (const flag of ['help', '--help', '-h']) {
+    const result = runCli([flag]);
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /🌱 GREENFIELD REPO BOOTSTRAP \(RECOMMENDED\)/);
+    assert.match(result.stdout, /\$ git init/);
+    assert.match(result.stdout, /\$ hydrate init/);
+    assert.match(result.stdout, /\.hydrate\/ROADMAP\.md/);
+    assert.match(result.stdout, /\$ hydrate context --clip/);
+    assert.match(result.stdout, /UOW-01/);
+    assert.match(result.stdout, /\$ claude --dangerously-skip-permissions/);
+    assert.match(result.stdout, /\/hydrate-lfg/);
+  }
+});
+
+test('the Greenfield Repo Bootstrap section appears before the Triad Workflow Guide and the COMMANDS table', () => {
+  const result = runCli(['--help']);
+  const greenfieldIdx = result.stdout.indexOf('GREENFIELD REPO BOOTSTRAP');
+  const triadIdx = result.stdout.indexOf('TRIAD WORKFLOW GUIDE');
+  const commandsIdx = result.stdout.indexOf('COMMANDS');
+
+  assert.ok(greenfieldIdx !== -1 && triadIdx !== -1 && commandsIdx !== -1);
+  assert.ok(greenfieldIdx < triadIdx);
+  assert.ok(triadIdx < commandsIdx);
+});
