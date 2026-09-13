@@ -150,7 +150,7 @@ test('runEject({ recursive: true }) ejects from the root and every nested repo',
   await withTempDir(async (dir) => {
     fs.mkdirSync(path.join(dir, '.git'));
     scaffold(dir);
-    fs.mkdirSync(path.join(dir, 'packages', 'nested'), { recursive: true });
+    fs.mkdirSync(path.join(dir, 'packages', 'nested', '.git'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'packages', 'nested', 'package.json'), '{}');
     scaffold(path.join(dir, 'packages', 'nested'));
 

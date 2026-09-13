@@ -3,6 +3,7 @@ const path = require('path');
 const { loadTemplate, renderTemplate } = require('./templates');
 const { applyManagedBlock } = require('./utils/managed-block');
 const { getPackageVersion } = require('./utils/pkg');
+const { resolveHarnessRoot } = require('./utils/git-root');
 
 // The 5 journal artifacts rendered into .hydrate/ on scaffold, each paired
 // with the console label printed when it's actually created.
@@ -204,8 +205,19 @@ function scaffold(cwd, { force = false } = {}) {
   return created;
 }
 
+// UOW-HYDRATE-ROOT-GUARD-AND-TEMPLATE-FIX: `hydrate init` always targets the
+// git repository's top-level root, not whatever subdirectory it happens to
+// be invoked from — a plain `cd packages/foo && hydrate init` must never
+// scaffold a nested `.hydrate/`/`CLAUDE.md` inside that subdirectory.
+// Outside a git repository this is a no-op fallback to `process.cwd()`.
 function runInit(options = []) {
-  const cwd = process.cwd();
+  const { root: cwd, redirected, inGitRepo } = resolveHarnessRoot(process.cwd());
+  if (redirected) {
+    console.log(`💧 Resolved git repository root: ${cwd} (initializing there instead of the current directory)`);
+  } else if (!inGitRepo) {
+    console.log(`💧 Not inside a git repository — initializing the current directory: ${cwd}`);
+  }
+
   const force = options.includes('--force') || options.includes('-f');
   const created = scaffold(cwd, { force });
 

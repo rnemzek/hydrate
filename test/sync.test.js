@@ -1,5 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -111,11 +112,11 @@ test('runSync() non-recursive only syncs the given directory even with nested re
   });
 });
 
-test('runSync() --recursive syncs the root and every nested repo, bootstrapping the uninitialized one', () => {
+test('runSync() --recursive syncs the root and every nested repo (with its own .git), bootstrapping the uninitialized one', () => {
   withTempDir((dir) => {
     fs.mkdirSync(path.join(dir, '.git'));
     scaffold(dir);
-    fs.mkdirSync(path.join(dir, 'packages', 'nested'), { recursive: true });
+    fs.mkdirSync(path.join(dir, 'packages', 'nested', '.git'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'packages', 'nested', 'package.json'), '{}');
 
     const logs = [];
@@ -126,6 +127,20 @@ test('runSync() --recursive syncs the root and every nested repo, bootstrapping 
     assert.equal(nested.action, 'bootstrapped');
     assert.ok(fs.existsSync(path.join(dir, 'packages', 'nested', '.hydrate', 'CURRENT_UOW.md')));
     assert.ok(logs.some((l) => l.includes('Bootstrapped')));
+  });
+});
+
+test('runSync() --recursive does NOT sync a nested package.json-only workspace package (no .git of its own)', () => {
+  withTempDir((dir) => {
+    fs.mkdirSync(path.join(dir, '.git'));
+    scaffold(dir);
+    fs.mkdirSync(path.join(dir, 'packages', 'workspace-pkg'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'packages', 'workspace-pkg', 'package.json'), '{}');
+
+    const results = runSync(dir, { recursive: true, log: () => {} });
+
+    assert.equal(results.length, 1);
+    assert.equal(fs.existsSync(path.join(dir, 'packages', 'workspace-pkg', '.hydrate')), false);
   });
 });
 
@@ -184,7 +199,7 @@ test('runSync({ recursive: true, force: true }) resets CLAUDE.md across every di
     scaffold(dir);
     fs.writeFileSync(path.join(dir, 'CLAUDE.md'), 'root legacy rules', 'utf8');
 
-    fs.mkdirSync(path.join(dir, 'packages', 'nested'), { recursive: true });
+    fs.mkdirSync(path.join(dir, 'packages', 'nested', '.git'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'packages', 'nested', 'package.json'), '{}');
     scaffold(path.join(dir, 'packages', 'nested'));
     fs.writeFileSync(path.join(dir, 'packages', 'nested', 'CLAUDE.md'), 'nested legacy rules', 'utf8');
@@ -207,5 +222,47 @@ test('runSync() respects --path to target a directory other than cwd', () => {
     assert.equal(results.length, 1);
     assert.equal(results[0].repoDir, target);
     assert.equal(results[0].action, 'bootstrapped');
+  });
+});
+
+// UOW-HYDRATE-ROOT-GUARD-AND-TEMPLATE-FIX: git repository root guard --------
+
+test('runSync() called from a nested subdirectory of a real git repo resolves to the git root, not the subdirectory', () => {
+  withTempDir((dir) => {
+    spawnSync('git', ['init', '-q'], { cwd: dir });
+    const sub = path.join(dir, 'packages', 'sub');
+    fs.mkdirSync(sub, { recursive: true });
+
+    const logs = [];
+    const results = runSync(sub, { log: (m) => logs.push(m) });
+
+    assert.equal(fs.realpathSync(results[0].repoDir), fs.realpathSync(dir));
+    assert.ok(fs.existsSync(path.join(dir, '.hydrate', 'CURRENT_UOW.md')));
+    assert.equal(fs.existsSync(path.join(sub, '.hydrate')), false);
+    assert.ok(logs.some((l) => l.includes('Resolved git repository root')));
+  });
+});
+
+test('runSync() an explicit --path is never redirected to the git root', () => {
+  withTempDir((dir) => {
+    spawnSync('git', ['init', '-q'], { cwd: dir });
+    const sub = path.join(dir, 'packages', 'sub');
+    fs.mkdirSync(sub, { recursive: true });
+
+    const results = runSync(dir, { targetPath: path.join('packages', 'sub'), log: () => {} });
+
+    assert.equal(results[0].repoDir, sub);
+    assert.ok(fs.existsSync(path.join(sub, '.hydrate')));
+  });
+});
+
+test('runSync() outside a git repository falls back to the given cwd with an informational notice', () => {
+  withTempDir((dir) => {
+    const logs = [];
+    const results = runSync(dir, { log: (m) => logs.push(m) });
+
+    assert.equal(results[0].repoDir, dir);
+    assert.ok(!logs.some((l) => l.includes('Resolved git repository root')));
+    assert.ok(logs.some((l) => l.includes('Not inside a git repository')));
   });
 });

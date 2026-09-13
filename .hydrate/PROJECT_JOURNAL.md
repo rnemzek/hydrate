@@ -17,3 +17,4 @@
 - [x] **[UOW-HYDRATE-14]** Global Lifecycle Engine & Workspace Sync — 2026-09-12 | Pass: 297/297 tests
 - [x] **[UOW-HYDRATE-15]** Greenfield Harness Reset & Force Sync — 2026-09-12 | Pass: 312/312 tests
 - [x] **[UOW-HYDRATE-CLI-DISCOVERABILITY]** Implement Discoverability, Help Flags, and Lifecycle Cleanup — 2026-09-13 | Pass: 334/334 tests
+- [x] **[UOW-HYDRATE-ROOT-GUARD-AND-TEMPLATE-FIX]** Enforce Git Repository Root Boundary & Render CLAUDE.md Placeholders — 2026-09-13 | Pass: 355/355 tests

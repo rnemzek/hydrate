@@ -1,10 +1,11 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const { scaffold, runInit, scaffoldClaudeCommands, pruneDeprecatedCommands } = require('../src/init');
+const { scaffold, runInit, scaffoldClaudeCommands, pruneDeprecatedCommands, CLAUDE_COMMANDS, HYDRATE_ARTIFACTS, DOCS_ARTIFACTS } = require('../src/init');
 const { loadTemplate, renderTemplate } = require('../src/templates');
 
 function makeTempDir() {
@@ -41,6 +42,23 @@ test('renderTemplate() leaves unmatched placeholders untouched', () => {
   const name = path.join('.hydrate', 'CURRENT_UOW.md');
   const rendered = renderTemplate(name, { UNUSED_KEY: 'x' });
   assert.equal(rendered, loadTemplate(name));
+});
+
+// UOW-HYDRATE-ROOT-GUARD-AND-TEMPLATE-FIX: regression guard — every template
+// path referenced by CLAUDE_COMMANDS/HYDRATE_ARTIFACTS/DOCS_ARTIFACTS must
+// actually exist on disk under templates/, so `hydrate init`/`hydrate sync`
+// can never hit an ENOENT partway through a scaffold or sync run.
+test('every CLAUDE_COMMANDS/HYDRATE_ARTIFACTS/DOCS_ARTIFACTS template resolves without throwing', () => {
+  for (const { name } of CLAUDE_COMMANDS) {
+    assert.doesNotThrow(() => loadTemplate(path.join('.claude', 'commands', name)), `.claude/commands/${name}.template should exist`);
+  }
+  for (const { name } of HYDRATE_ARTIFACTS) {
+    assert.doesNotThrow(() => loadTemplate(path.join('.hydrate', name)), `.hydrate/${name}.template should exist`);
+  }
+  for (const { name } of DOCS_ARTIFACTS) {
+    assert.doesNotThrow(() => loadTemplate(path.join('docs', name)), `docs/${name}.template should exist`);
+  }
+  assert.doesNotThrow(() => loadTemplate('CLAUDE.md'));
 });
 
 // scaffold() ---------------------------------------------------------------
@@ -351,5 +369,75 @@ test('runInit() prints a checklist of created files and next steps', () => {
     assert.match(output, /hydrate-checkup/);
     assert.match(output, /hydrate-help/);
     assert.match(output, /Harness Initialized/);
+  });
+});
+
+// UOW-HYDRATE-ROOT-GUARD-AND-TEMPLATE-FIX: git repository root guard --------
+
+test('runInit() run from a nested subdirectory of a real git repo scaffolds at the git root, not the subdirectory', () => {
+  withTempDir((dir) => {
+    spawnSync('git', ['init', '-q'], { cwd: dir });
+    const sub = path.join(dir, 'packages', 'sub');
+    fs.mkdirSync(sub, { recursive: true });
+
+    const originalCwd = process.cwd();
+    const logs = [];
+    const originalLog = console.log;
+    console.log = (msg) => logs.push(msg);
+
+    try {
+      process.chdir(sub);
+      runInit();
+    } finally {
+      console.log = originalLog;
+      process.chdir(originalCwd);
+    }
+
+    assert.ok(fs.existsSync(path.join(dir, '.hydrate', 'CURRENT_UOW.md')));
+    assert.ok(fs.existsSync(path.join(dir, 'CLAUDE.md')));
+    assert.equal(fs.existsSync(path.join(sub, '.hydrate')), false);
+    assert.match(logs.join('\n'), /Resolved git repository root/);
+  });
+});
+
+test('runInit() run at the git repository root itself prints no redirect notice', () => {
+  withTempDir((dir) => {
+    spawnSync('git', ['init', '-q'], { cwd: dir });
+
+    const originalCwd = process.cwd();
+    const logs = [];
+    const originalLog = console.log;
+    console.log = (msg) => logs.push(msg);
+
+    try {
+      process.chdir(dir);
+      runInit();
+    } finally {
+      console.log = originalLog;
+      process.chdir(originalCwd);
+    }
+
+    assert.doesNotMatch(logs.join('\n'), /Resolved git repository root/);
+    assert.ok(fs.existsSync(path.join(dir, '.hydrate', 'CURRENT_UOW.md')));
+  });
+});
+
+test('runInit() outside a git repository falls back to process.cwd() with an informational notice', () => {
+  withTempDir((dir) => {
+    const originalCwd = process.cwd();
+    const logs = [];
+    const originalLog = console.log;
+    console.log = (msg) => logs.push(msg);
+
+    try {
+      process.chdir(dir);
+      runInit();
+    } finally {
+      console.log = originalLog;
+      process.chdir(originalCwd);
+    }
+
+    assert.ok(fs.existsSync(path.join(dir, '.hydrate', 'CURRENT_UOW.md')));
+    assert.match(logs.join('\n'), /Not inside a git repository/);
   });
 });

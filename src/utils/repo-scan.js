@@ -6,8 +6,12 @@ const path = require('path');
 // root worth syncing.
 const SKIP_DIR_NAMES = new Set(['node_modules', '.git']);
 
+function hasOwnGit(dir) {
+  return fs.existsSync(path.join(dir, '.git'));
+}
+
 function isRepoRoot(dir) {
-  return fs.existsSync(path.join(dir, '.git')) || fs.existsSync(path.join(dir, 'package.json'));
+  return hasOwnGit(dir) || fs.existsSync(path.join(dir, 'package.json'));
 }
 
 // Recursively finds repo roots at or beneath `startDir` (downward-only —
@@ -15,11 +19,19 @@ function isRepoRoot(dir) {
 // for a --recursive flag, so `hydrate sync --recursive`/`hydrate eject
 // --recursive` always scope to `startDir` and below). Dotfiles/dotdirs other
 // than the repo itself are skipped so scans don't wander into tool caches.
+//
+// UOW-HYDRATE-ROOT-GUARD-AND-TEMPLATE-FIX: only `startDir` itself may
+// qualify via `package.json` alone. Anything found *beneath* it must have
+// its own `.git` to count as a distinct root — a `package.json` nested
+// inside a larger git working tree (a monorepo workspace package, a
+// `vendor/`/`packages/` subdirectory) is part of that outer repo, not an
+// independent one, and must never get its own `.hydrate/`/`.claude/`.
 function findRepoRoots(startDir, { maxDepth = 6 } = {}) {
   const found = [];
 
   function walk(dir, depth) {
-    if (isRepoRoot(dir)) found.push(dir);
+    const isRoot = depth === 0 ? isRepoRoot(dir) : hasOwnGit(dir);
+    if (isRoot) found.push(dir);
     if (depth >= maxDepth) return;
 
     let entries;
@@ -40,4 +52,4 @@ function findRepoRoots(startDir, { maxDepth = 6 } = {}) {
   return found;
 }
 
-module.exports = { isRepoRoot, findRepoRoots };
+module.exports = { isRepoRoot, hasOwnGit, findRepoRoots };

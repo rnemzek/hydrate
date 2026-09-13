@@ -5,6 +5,7 @@ const { renderTemplate } = require('../templates');
 const { applyManagedBlock } = require('../utils/managed-block');
 const { getPackageVersion } = require('../utils/pkg');
 const { findRepoRoots } = require('../utils/repo-scan');
+const { resolveHarnessRoot } = require('../utils/git-root');
 
 // Force-refreshes one repo's `.claude/commands/hydrate-*.md` templates and
 // CLAUDE.md managed block to the running package version, leaving
@@ -61,14 +62,34 @@ function syncRepo(repoDir, { version = getPackageVersion(), force = false } = {}
   return { repoDir, action: 'synced', updated, guard, removed };
 }
 
-// `--recursive` scans downward from `targetPath` (default: cwd) for nested
-// `.git`/`package.json` roots — deliberately downward-only. Scanning
-// *upward* toward the filesystem root (as a literal reading of "parent
-// directories" might suggest) would be unbounded and unsafe for a flag a
-// Product Owner can run from anywhere; scoping to "this directory and
-// below" is the safe, predictable interpretation.
+// `--recursive` scans downward from `targetPath` (default: the resolved
+// git repository root — see below) for nested `.git`/`package.json` roots —
+// deliberately downward-only. Scanning *upward* toward the filesystem root
+// (as a literal reading of "parent directories" might suggest) would be
+// unbounded and unsafe for a flag a Product Owner can run from anywhere;
+// scoping to "this directory and below" is the safe, predictable
+// interpretation.
+//
+// UOW-HYDRATE-ROOT-GUARD-AND-TEMPLATE-FIX: when no explicit `--path` is
+// given, the sync/scan root is resolved via `git rev-parse --show-toplevel`
+// rather than used as literal `cwd` — running `hydrate sync` from any
+// subdirectory of a git working tree must never write `.hydrate/`/
+// `.claude/` into that subdirectory. An explicit `--path` is a deliberate
+// override and is used exactly as given, with no redirect.
 function runSync(cwd, { recursive = false, targetPath, version, force = false, log = console.log } = {}) {
-  const root = targetPath ? path.resolve(cwd, targetPath) : cwd;
+  let root;
+  if (targetPath) {
+    root = path.resolve(cwd, targetPath);
+  } else {
+    const resolved = resolveHarnessRoot(cwd);
+    root = resolved.root;
+    if (resolved.redirected) {
+      log(`💧 Resolved git repository root: ${root} (syncing there instead of the current directory)`);
+    } else if (!resolved.inGitRepo) {
+      log(`💧 Not inside a git repository — syncing the current directory: ${root}`);
+    }
+  }
+
   const roots = recursive ? findRepoRoots(root) : [root];
 
   const results = roots.map((repoDir) => syncRepo(repoDir, { version, force }));
