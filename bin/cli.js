@@ -19,6 +19,7 @@ const { runEject } = require('../src/commands/eject');
 const { runHook } = require('../src/commands/hook');
 const { checkVersionDrift, formatDriftBanner } = require('../src/utils/version-check');
 const { getPackageVersion } = require('../src/utils/pkg');
+const { buildCompletionScript, detectShell } = require('../src/commands/completion');
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -107,9 +108,14 @@ if (isLfgCommand) {
       handleHook(rest);
       break;
 
-    default:
-      printGlobalHelp();
+    case 'completion':
+      handleCompletion(rest);
       break;
+
+    default:
+      console.error(`❌ Error: Unknown command "${command}".\n`);
+      printGlobalHelp();
+      process.exit(1);
   }
 }
 
@@ -582,6 +588,12 @@ function handleHook(options = []) {
   const action = options[0];
   const result = runHook(action, {});
   process.exit(result.code);
+}
+
+function handleCompletion(options = []) {
+  const requested = options[0];
+  const shell = requested === 'bash' || requested === 'zsh' ? requested : detectShell();
+  console.log(buildCompletionScript(shell));
 }
 
 function outputChunkedArchitectPayload(payload, chunkSize) {

@@ -63,7 +63,7 @@ test('buildArtifactsReport() lists .claude/commands/ with descriptions after `hy
     runCli(['init'], dir);
     const report = buildArtifactsReport(dir);
 
-    assert.match(report, /hydrate\.md — Unified master \/hydrate command/);
+    assert.match(report, /hydrate\.md — Router — no args lists the slash-command directory/);
     assert.match(report, /hydrate-checkup\.md — Runs `hydrate checkup`/);
     assert.match(report, /hydrate-uow\.md — Inspect UOWs/);
     assert.match(report, /hydrate-artifacts\.md — Prints this artifact map/);

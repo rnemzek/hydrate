@@ -11,7 +11,7 @@ const HYDRATE_FILE_DESCRIPTIONS = {
 };
 
 const CLAUDE_COMMAND_DESCRIPTIONS = {
-  'hydrate.md': 'Unified master /hydrate command (checkup, auto-archive, clipboard sync).',
+  'hydrate.md': 'Router — no args lists the slash-command directory; a subcommand delegates to it.',
   'hydrate-checkup.md': 'Runs `hydrate checkup` — session state reconciler.',
   'hydrate-ingest.md': 'Runs `hydrate ingest --yes` — apply a clipboard UOW payload.',
   'hydrate-context.md': 'Runs `hydrate context` — token-dense context payload.',

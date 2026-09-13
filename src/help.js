@@ -17,7 +17,8 @@ const COMMANDS = {
       'Creates CLAUDE.md, the 5-artifact .hydrate/ journal layout, .hydrate/archive/, the .claude/commands/hydrate-*.md slash commands, and docs/ARCHITECTURE*.md — skipping any file that already exists.',
       'If CLAUDE.md already carries the Hydrate managed block, refreshes only the text inside those markers.',
       'If CLAUDE.md exists with no Hydrate markers, leaves it untouched and reports that --force is required (no silent merge).',
-      '--force wholesale-resets CLAUDE.md (discarding any unmarked legacy content) and overwrites every .claude/commands/hydrate-*.md to the current template — .hydrate/ journals, archive, and ROADMAP.md are never touched by --force.'
+      '--force wholesale-resets CLAUDE.md (discarding any unmarked legacy content) and overwrites every .claude/commands/hydrate-*.md to the current template — .hydrate/ journals, archive, and ROADMAP.md are never touched by --force.',
+      'Removes any .claude/commands/hydrate*.md file that is not part of the current command registry (e.g. a stray legacy hydrate-architect.md) — never touches a non-hydrate-named custom slash command.'
     ],
     options: [
       ['-f, --force', 'Greenfield reset: replace an unmarked CLAUDE.md and overwrite .claude/commands/*.md templates. Never touches .hydrate/.']
@@ -196,6 +197,7 @@ const COMMANDS = {
       'If CLAUDE.md has no Hydrate markers, leaves it untouched and reports that a greenfield reset (--force) is required, instead of guessing.',
       '--force wholesale-replaces an unmarked CLAUDE.md with the clean managed-block template, discarding the legacy content.',
       'Bootstraps a quiet `hydrate init` (passing --force through) in any target repo missing .hydrate/ instead of syncing nothing.',
+      'Removes any .claude/commands/hydrate*.md file that is not part of the current command registry (e.g. a stray legacy hydrate-architect.md) — never touches a non-hydrate-named custom slash command.',
       '--recursive scans downward from --path (default: cwd) for nested .git/package.json roots and syncs each one.',
       'Never modifies .hydrate/ journals, archive, or CURRENT_UOW.md — with or without --force.'
     ],
@@ -237,6 +239,17 @@ const COMMANDS = {
       ['-f, --force', 'Skip the confirmation prompt.']
     ],
     examples: ['hydrate eject --dry-run', 'hydrate eject --force', 'hydrate eject --recursive --dry-run']
+  },
+  completion: {
+    summary: 'Print a bash/zsh shell completion script listing every hydrate subcommand.',
+    usage: 'hydrate completion [bash|zsh]',
+    whenToRun: 'Once, to wire up tab-completion for `hydrate`/`hz` subcommands in your shell.',
+    whatItDoes: [
+      'Prints a completion script for the given shell (default: detected from $SHELL, falling back to bash).',
+      'The script lists every visible hydrate subcommand — hidden aliases (status/export/paste/lfg) are omitted since they complete via their canonical verb.'
+    ],
+    options: [],
+    examples: ['hydrate completion', 'hydrate completion bash >> ~/.bashrc', 'hydrate completion zsh >> ~/.zshrc']
   },
   hook: {
     summary: 'Install/remove a shell hook that auto-runs `hydrate init` after every `git init`.',
@@ -348,6 +361,7 @@ function printGlobalHelp() {
   console.log('  $ hydrate update');
   console.log('  $ hydrate eject --dry-run');
   console.log('  $ hydrate hook enable');
+  console.log('  $ hydrate completion zsh');
   console.log('  $ hydrate <command> --help');
   console.log('  $ hydrate --version');
   console.log('');

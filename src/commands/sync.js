@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { scaffold, CLAUDE_COMMANDS } = require('../init');
+const { scaffold, CLAUDE_COMMANDS, pruneDeprecatedCommands } = require('../init');
 const { renderTemplate } = require('../templates');
 const { applyManagedBlock } = require('../utils/managed-block');
 const { getPackageVersion } = require('../utils/pkg');
@@ -40,6 +40,12 @@ function syncRepo(repoDir, { version = getPackageVersion(), force = false } = {}
     }
   }
 
+  // UOW-HYDRATE-CLI-DISCOVERABILITY: purge any hydrate-owned slash command
+  // that's fallen out of the canonical registry (e.g. a stray legacy
+  // `hydrate-architect.md`). Scoped to `hydrate*.md` filenames only, so a
+  // Product Owner's own unrelated custom commands are never touched.
+  const removed = pruneDeprecatedCommands(repoDir).map((name) => path.join(commandsDir, name));
+
   const claudePath = path.join(repoDir, 'CLAUDE.md');
   const existingClaude = fs.existsSync(claudePath) ? fs.readFileSync(claudePath, 'utf8') : null;
   const body = renderTemplate('CLAUDE.md', { PROJECT_NAME: projectName });
@@ -52,7 +58,7 @@ function syncRepo(repoDir, { version = getPackageVersion(), force = false } = {}
     updated.push(claudePath);
   }
 
-  return { repoDir, action: 'synced', updated, guard };
+  return { repoDir, action: 'synced', updated, guard, removed };
 }
 
 // `--recursive` scans downward from `targetPath` (default: cwd) for nested
@@ -74,8 +80,12 @@ function runSync(cwd, { recursive = false, targetPath, version, force = false, l
       log(`  ✔ Bootstrapped ${label} (no .hydrate/ found — ran hydrate init${force ? ' --force' : ''})`);
     } else if (result.updated.length > 0) {
       log(`  ✔ Synced ${label} (${result.updated.length} file${result.updated.length === 1 ? '' : 's'} updated)`);
-    } else if (!result.guard) {
+    } else if (!result.guard && !(result.removed && result.removed.length > 0)) {
       log(`  • ${label} already up to date`);
+    }
+
+    if (result.removed && result.removed.length > 0) {
+      result.removed.forEach((removedPath) => log(`  🗑 Removed deprecated ${path.relative(cwd, removedPath)} (not in the current Hydrate command registry)`));
     }
 
     if (result.guard) {

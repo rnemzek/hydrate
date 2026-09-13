@@ -16,3 +16,4 @@
 - [x] **[UOW-HYDRATE-13]** Align CLI Subcommands with Slash Command Templates — 2026-09-12 | Pass: 219/219 tests
 - [x] **[UOW-HYDRATE-14]** Global Lifecycle Engine & Workspace Sync — 2026-09-12 | Pass: 297/297 tests
 - [x] **[UOW-HYDRATE-15]** Greenfield Harness Reset & Force Sync — 2026-09-12 | Pass: 312/312 tests
+- [x] **[UOW-HYDRATE-CLI-DISCOVERABILITY]** Implement Discoverability, Help Flags, and Lifecycle Cleanup — 2026-09-13 | Pass: 334/334 tests

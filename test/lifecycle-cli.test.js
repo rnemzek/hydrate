@@ -166,3 +166,70 @@ test('hydrate update --help prints command help', () => {
     assert.match(result.stdout, /hydrate update/);
   });
 });
+
+// completion --------------------------------------------------------------------
+
+test('hydrate completion --help prints command help', () => {
+  withTempDir((dir) => {
+    const result = runCli(['completion', '--help'], dir);
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /hydrate completion/);
+  });
+});
+
+test('hydrate completion bash prints a bash completion script', () => {
+  withTempDir((dir) => {
+    const result = runCli(['completion', 'bash'], dir);
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /_hydrate_completions/);
+    assert.match(result.stdout, /checkup/);
+  });
+});
+
+test('hydrate completion zsh prints a zsh completion script', () => {
+  withTempDir((dir) => {
+    const result = runCli(['completion', 'zsh'], dir);
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /#compdef hydrate hz/);
+  });
+});
+
+// deprecated command purge --------------------------------------------------------
+
+test('hydrate sync removes a deprecated hydrate-architect.md left in .claude/commands/', () => {
+  withTempDir((dir) => {
+    runCli(['init'], dir);
+    fs.writeFileSync(path.join(dir, '.claude', 'commands', 'hydrate-architect.md'), 'legacy content', 'utf8');
+
+    const result = runCli(['sync'], dir);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /Removed deprecated/);
+    assert.equal(fs.existsSync(path.join(dir, '.claude', 'commands', 'hydrate-architect.md')), false);
+  });
+});
+
+test('hydrate init removes a deprecated hydrate-architect.md left in .claude/commands/', () => {
+  withTempDir((dir) => {
+    runCli(['init'], dir);
+    fs.writeFileSync(path.join(dir, '.claude', 'commands', 'hydrate-architect.md'), 'legacy content', 'utf8');
+
+    const result = runCli(['init'], dir);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /Removed deprecated/);
+    assert.equal(fs.existsSync(path.join(dir, '.claude', 'commands', 'hydrate-architect.md')), false);
+  });
+});
+
+test('hydrate sync never removes a Product Owner\'s own unrelated custom slash command', () => {
+  withTempDir((dir) => {
+    runCli(['init'], dir);
+    fs.writeFileSync(path.join(dir, '.claude', 'commands', 'my-team-thing.md'), 'keep me', 'utf8');
+
+    const result = runCli(['sync'], dir);
+
+    assert.equal(result.status, 0);
+    assert.ok(fs.existsSync(path.join(dir, '.claude', 'commands', 'my-team-thing.md')));
+  });
+});

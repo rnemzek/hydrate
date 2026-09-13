@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const { scaffold, runInit } = require('../src/init');
+const { scaffold, runInit, scaffoldClaudeCommands, pruneDeprecatedCommands } = require('../src/init');
 const { loadTemplate, renderTemplate } = require('../src/templates');
 
 function makeTempDir() {
@@ -188,6 +188,84 @@ test('scaffold({ force: true }) overwrites a customized slash command file to ma
     assert.ok(entry);
     assert.match(entry.label, /^Updated/);
     assert.notEqual(fs.readFileSync(path.join(dir, '.claude', 'commands', 'hydrate-checkup.md'), 'utf8'), 'custom command');
+  });
+});
+
+// pruneDeprecatedCommands() / deprecated command purge ---------------------
+
+test('pruneDeprecatedCommands() removes a hydrate-owned file not in the canonical registry', () => {
+  withTempDir((dir) => {
+    fs.mkdirSync(path.join(dir, '.claude', 'commands'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.claude', 'commands', 'hydrate-architect.md'), 'legacy content');
+
+    const removed = pruneDeprecatedCommands(dir);
+
+    assert.deepEqual(removed, ['hydrate-architect.md']);
+    assert.equal(fs.existsSync(path.join(dir, '.claude', 'commands', 'hydrate-architect.md')), false);
+  });
+});
+
+test('pruneDeprecatedCommands() never touches a non-hydrate-named custom command file', () => {
+  withTempDir((dir) => {
+    fs.mkdirSync(path.join(dir, '.claude', 'commands'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.claude', 'commands', 'my-custom-thing.md'), 'keep me');
+
+    const removed = pruneDeprecatedCommands(dir);
+
+    assert.deepEqual(removed, []);
+    assert.ok(fs.existsSync(path.join(dir, '.claude', 'commands', 'my-custom-thing.md')));
+  });
+});
+
+test('pruneDeprecatedCommands() never touches an active canonical command file', () => {
+  withTempDir((dir) => {
+    scaffold(dir);
+    const removed = pruneDeprecatedCommands(dir);
+    assert.deepEqual(removed, []);
+    assert.ok(fs.existsSync(path.join(dir, '.claude', 'commands', 'hydrate-checkup.md')));
+  });
+});
+
+test('pruneDeprecatedCommands() is a no-op when .claude/commands/ does not exist', () => {
+  withTempDir((dir) => {
+    assert.deepEqual(pruneDeprecatedCommands(dir), []);
+  });
+});
+
+test('scaffoldClaudeCommands() prunes a deprecated file and reports it with a `removed` entry', () => {
+  withTempDir((dir) => {
+    fs.mkdirSync(path.join(dir, '.claude', 'commands'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.claude', 'commands', 'hydrate-architect.md'), 'legacy content');
+
+    const created = scaffoldClaudeCommands(dir);
+
+    const entry = created.find((c) => c.path.endsWith('hydrate-architect.md'));
+    assert.ok(entry);
+    assert.equal(entry.removed, true);
+    assert.equal(fs.existsSync(path.join(dir, '.claude', 'commands', 'hydrate-architect.md')), false);
+  });
+});
+
+test('scaffold() prunes a deprecated slash command as part of a full scaffold and prints the 🗑 glyph', () => {
+  withTempDir((dir) => {
+    const originalCwd = process.cwd();
+    const logs = [];
+    const originalLog = console.log;
+    console.log = (msg) => logs.push(msg);
+
+    try {
+      process.chdir(dir);
+      runInit();
+      fs.writeFileSync(path.join(dir, '.claude', 'commands', 'hydrate-architect.md'), 'legacy content');
+      logs.length = 0;
+      runInit();
+    } finally {
+      console.log = originalLog;
+      process.chdir(originalCwd);
+    }
+
+    assert.equal(fs.existsSync(path.join(dir, '.claude', 'commands', 'hydrate-architect.md')), false);
+    assert.match(logs.join('\n'), /🗑 Removed deprecated .*hydrate-architect\.md/);
   });
 });
 

@@ -42,6 +42,36 @@ const DOCS_ARTIFACTS = [
   { name: 'ARCHITECTURE_JOURNAL.md', label: 'Created docs/ARCHITECTURE_JOURNAL.md (Architecture Decision Journal)' }
 ];
 
+const ACTIVE_COMMAND_NAMES = new Set(CLAUDE_COMMANDS.map((c) => c.name));
+
+// Matches any Hydrate-owned slash command filename, active or not — used to
+// scope the deprecated-command purge below so it can never touch a Product
+// Owner's own unrelated custom `.claude/commands/*.md` files.
+const HYDRATE_COMMAND_NAME_RE = /^hydrate.*\.md$/;
+
+// Deletes any `.claude/commands/hydrate*.md` file that is NOT part of the
+// current canonical `CLAUDE_COMMANDS` registry above — e.g. a stray legacy
+// `hydrate-architect.md` left over from an older hydrate version
+// (UOW-HYDRATE-CLI-DISCOVERABILITY). Runs unconditionally (no `force` gate)
+// from both `hydrate init` and `hydrate sync`, since removing genuinely
+// orphaned Hydrate-owned files is safe by construction — unlike CLAUDE.md's
+// managed block, there's no "customize this file in place" use case a purge
+// could clobber. Returns the removed filenames (not full label objects —
+// callers format their own report line).
+function pruneDeprecatedCommands(cwd) {
+  const claudeCommandsDir = path.join(cwd, '.claude', 'commands');
+  if (!fs.existsSync(claudeCommandsDir)) return [];
+
+  const removed = [];
+  for (const name of fs.readdirSync(claudeCommandsDir)) {
+    if (!HYDRATE_COMMAND_NAME_RE.test(name)) continue;
+    if (ACTIVE_COMMAND_NAMES.has(name)) continue;
+    fs.rmSync(path.join(claudeCommandsDir, name), { force: true });
+    removed.push(name);
+  }
+  return removed;
+}
+
 // Idempotently writes just the .claude/commands/ slash-command definitions
 // (a subset of scaffold()) from templates/, skipping any file that already
 // exists. Used both by `hydrate init`'s full scaffold and by
@@ -78,6 +108,14 @@ function scaffoldClaudeCommands(cwd, { force = false } = {}) {
         created.push({ path: filePath, label: label.replace(/^Created/, 'Updated') });
       }
     }
+  }
+
+  for (const name of pruneDeprecatedCommands(cwd)) {
+    created.push({
+      path: path.join(claudeCommandsDir, name),
+      label: `Removed deprecated .claude/commands/${name} (not in the current Hydrate command registry)`,
+      removed: true
+    });
   }
 
   return created;
@@ -171,7 +209,7 @@ function runInit(options = []) {
   const force = options.includes('--force') || options.includes('-f');
   const created = scaffold(cwd, { force });
 
-  created.forEach(({ label, guard }) => console.log(`  ${guard ? '⚠' : '✔'} ${label}`));
+  created.forEach(({ label, guard, removed }) => console.log(`  ${guard ? '⚠' : removed ? '🗑' : '✔'} ${label}`));
 
   console.log(`
 💧 @nemzilla/hydrate Harness Initialized!
@@ -183,4 +221,4 @@ function runInit(options = []) {
 `);
 }
 
-module.exports = { runInit, scaffold, scaffoldClaudeCommands, CLAUDE_COMMANDS, HYDRATE_ARTIFACTS, DOCS_ARTIFACTS };
+module.exports = { runInit, scaffold, scaffoldClaudeCommands, pruneDeprecatedCommands, CLAUDE_COMMANDS, HYDRATE_ARTIFACTS, DOCS_ARTIFACTS };

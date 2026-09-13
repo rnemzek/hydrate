@@ -46,9 +46,10 @@ test('hydrate prompt --help shows subcommand help without mutating .hydrate/', (
   }
 });
 
-test('hydrate unknown-cmd exits cleanly and falls back to global help', () => {
+test('hydrate unknown-cmd exits 1 with an error plus the global help manual', () => {
   const result = runCli(['unknown-cmd']);
-  assert.equal(result.status, 0);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Unknown command "unknown-cmd"/);
   assert.match(result.stdout, /commands/i);
 });
 
@@ -76,12 +77,19 @@ test('global help lists exactly the pruned v2 command surface', () => {
   assert.doesNotMatch(result.stdout, /AI_PROJECT_RULES\.md/);
 });
 
+// UOW-HYDRATE-CLI-DISCOVERABILITY: "Unknown Command Forgiveness" changed the
+// unrecognized-command contract from a silent exit-0 fallback to an error +
+// help manual on exit 1 (see the 'hydrate unknown-cmd' test above). These
+// pruned v1 verbs are still unrecognized commands, so they now follow that
+// same exit-1 contract instead of the old silent no-op — they still fall
+// back to the global help manual and never create .hydrate/ as a side effect.
 for (const removed of ['inject', 'adopt', 'iterate', 'setup-cc', 'greenfield', 'brownfield']) {
-  test(`hydrate ${removed} is pruned and falls back to global help`, () => {
+  test(`hydrate ${removed} is pruned, exits 1, and falls back to global help`, () => {
     const cwd = makeTempDir();
     try {
       const result = runCli([removed], { cwd });
-      assert.equal(result.status, 0);
+      assert.equal(result.status, 1);
+      assert.match(result.stderr, new RegExp(`Unknown command "${removed}"`));
       assert.match(result.stdout, /commands/i);
       assert.equal(fs.existsSync(path.join(cwd, '.hydrate')), false);
     } finally {

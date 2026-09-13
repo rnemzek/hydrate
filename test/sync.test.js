@@ -129,6 +129,42 @@ test('runSync() --recursive syncs the root and every nested repo, bootstrapping 
   });
 });
 
+test('syncRepo() prunes a deprecated slash command not in the canonical registry', () => {
+  withTempDir((dir) => {
+    scaffold(dir);
+    fs.writeFileSync(path.join(dir, '.claude', 'commands', 'hydrate-architect.md'), 'legacy content', 'utf8');
+
+    const result = syncRepo(dir, { version: '1.0.0' });
+
+    assert.deepEqual(result.removed, [path.join(dir, '.claude', 'commands', 'hydrate-architect.md')]);
+    assert.equal(fs.existsSync(path.join(dir, '.claude', 'commands', 'hydrate-architect.md')), false);
+  });
+});
+
+test('syncRepo() never prunes a non-hydrate-named custom command file', () => {
+  withTempDir((dir) => {
+    scaffold(dir);
+    fs.writeFileSync(path.join(dir, '.claude', 'commands', 'my-custom-thing.md'), 'keep me', 'utf8');
+
+    const result = syncRepo(dir, { version: '1.0.0' });
+
+    assert.deepEqual(result.removed, []);
+    assert.ok(fs.existsSync(path.join(dir, '.claude', 'commands', 'my-custom-thing.md')));
+  });
+});
+
+test('runSync() logs a removal line for a pruned deprecated command', () => {
+  withTempDir((dir) => {
+    scaffold(dir);
+    fs.writeFileSync(path.join(dir, '.claude', 'commands', 'hydrate-architect.md'), 'legacy content', 'utf8');
+
+    const logs = [];
+    runSync(dir, { log: (m) => logs.push(m) });
+
+    assert.ok(logs.some((l) => l.includes('🗑 Removed deprecated') && l.includes('hydrate-architect.md')));
+  });
+});
+
 test('runSync() logs a guard warning instead of "already up to date" when CLAUDE.md needs a greenfield reset', () => {
   withTempDir((dir) => {
     scaffold(dir);

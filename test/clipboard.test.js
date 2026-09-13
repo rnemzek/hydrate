@@ -206,13 +206,14 @@ test('hydrate clip pipes CURRENT_UOW.md content through the platform clipboard t
   }
 });
 
-test('hydrate copy is pruned (v2 command surface is `clip` only) and falls back to global help', () => {
+test('hydrate copy is pruned (v2 command surface is `clip` only), exits 1, and falls back to global help', () => {
   const cwd = makeTempDir('hydrate-copy-test-');
   try {
     fs.mkdirSync(path.join(cwd, '.hydrate'));
     fs.writeFileSync(path.join(cwd, '.hydrate', 'CURRENT_UOW.md'), '## UOW-77\n');
     const result = runCli(['copy'], cwd, { PATH: '' });
-    assert.equal(result.status, 0);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Unknown command "copy"/);
     assert.match(result.stdout, /commands/i);
     assert.doesNotMatch(result.stdout, /No clipboard tool found|Copied UOW context to clipboard/);
   } finally {
